@@ -3,16 +3,17 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
+    id("com.google.gms.google-services")
 }
 
 android {
     namespace = "com.example.attendancekiosk"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.attendancekiosk"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -72,4 +73,33 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
     kapt("androidx.room:room-compiler:$room_version")
+
+    // Firebase BOM (Manages versions for all Firebase libraries automatically)
+    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
+
+    // Firebase Analytics (Recommended by Google when using Firebase)
+    implementation("com.google.firebase:firebase-analytics")
+
+    // Firestore (Database for text logs)
+    implementation("com.google.firebase:firebase-firestore")
+
+    // Cloud Storage (For saving the photos)
+    implementation("com.google.firebase:firebase-storage")
+
+    // WorkManager (For running the sync in the background)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Firebase BOM (Manages versions)
+    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
+
+    // Firestore (Free text database)
+    implementation("com.google.firebase:firebase-firestore")
+
+    // WorkManager (Runs the sync safely in the background)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    implementation(platform("com.google.firebase:firebase-bom:34.10.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    // Google ML Kit (Face Detection)
+    implementation("com.google.mlkit:face-detection:16.1.6")
 }
