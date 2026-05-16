@@ -22,4 +22,7 @@ interface AttendanceDao {
 
     @Query("SELECT * FROM attendance_logs WHERE employeeId = :empId ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatestRecordForEmployee(empId: String): AttendanceRecord?
+
+    @Query("SELECT * FROM attendance_logs WHERE employeeId = :empId AND recordType = 'CLOCK_IN' AND timestamp >= :startOfDay AND timestamp < :endOfDay LIMIT 1")
+    suspend fun getClockInForDay(empId: String, startOfDay: Long, endOfDay: Long): AttendanceRecord?
 }

@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KHH Admin Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 24px;
+    }
+
+    /* ── Login screen ── */
+    #login-screen {
+      position: fixed;
+      inset: 0;
+      background: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .login-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 24px;
+      padding: 48px 40px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .login-card .login-logo { font-size: 2.4rem; margin-bottom: 4px; }
+    .login-card h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 32px; }
+
+    .login-field {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .login-field:focus { border-color: #38bdf8; }
+    .login-field::placeholder { color: #475569; }
+
+    .btn-login {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 4px;
+      transition: background 0.2s;
+    }
+    .btn-login:hover { background: #38bdf8; }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #login-error {
+      color: #f87171;
+      margin-top: 14px;
+      font-size: 0.85rem;
+      min-height: 20px;
+    }
+
+    /* ── Dashboard (hidden until auth) ── */
+    #dashboard { display: none; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 { font-size: 1.8rem; font-weight: 700; color: #f8fafc; }
+    header h1 span { color: #38bdf8; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    #today-label {
+      font-size: 1rem;
+      color: #94a3b8;
+      background: #1e293b;
+      padding: 8px 16px;
+      border-radius: 8px;
+    }
+
+    #user-email { font-size: 0.85rem; color: #94a3b8; }
+
+    .btn-signout {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-signout:hover { background: #475569; }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+
+    .card .icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .card .number { font-size: 3rem; font-weight: 800; line-height: 1; }
+    .card .label {
+      font-size: 0.9rem; color: #94a3b8;
+      margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    .card.yes   .number { color: #4ade80; }
+    .card.no    .number { color: #f87171; }
+    .card.total .number { color: #38bdf8; }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 1rem; font-weight: 600; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    /* ── Employee list ── */
+    .employee-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+
+    .employee-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #1e293b; border-radius: 10px;
+      padding: 12px 16px; border: 1px solid #334155;
+      transition: border-color 0.2s;
+    }
+    .employee-row:hover { border-color: #475569; }
+    .employee-id { font-weight: 600; font-size: 0.95rem; color: #e2e8f0; }
+
+    .badge {
+      font-size: 0.8rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 999px;
+    }
+    .badge.yes { background: #166534; color: #4ade80; }
+    .badge.no  { background: #7f1d1d; color: #f87171; }
+
+    /* ── Announcement manager ── */
+    .announce-form {
+      display: flex; gap: 10px; margin-bottom: 16px;
+    }
+
+    .announce-form input {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .announce-form input:focus { border-color: #38bdf8; }
+    .announce-form input::placeholder { color: #475569; }
+
+    .btn-post {
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-post:hover { background: #38bdf8; }
+
+    .announce-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .announce-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #1e293b; border-radius: 10px;
+      padding: 12px 16px; border: 1px solid #334155;
+      gap: 12px; flex-wrap: wrap;
+    }
+
+    .announce-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .announce-dot.active   { background: #4ade80; }
+    .announce-dot.inactive { background: #475569; }
+
+    .announce-msg {
+      flex: 1; font-size: 0.95rem; color: #e2e8f0;
+    }
+    .announce-msg.inactive { color: #475569; text-decoration: line-through; }
+
+    .announce-actions { display: flex; gap: 8px; }
+
+    .btn-toggle, .btn-delete {
+      border: none; border-radius: 8px;
+      padding: 6px 14px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn-toggle  { background: #1d4ed8; color: #93c5fd; }
+    .btn-toggle:hover { opacity: 0.8; }
+    .btn-delete  { background: #7f1d1d; color: #f87171; }
+    .btn-delete:hover { opacity: 0.8; }
+
+    .announce-empty {
+      color: #475569; font-size: 0.9rem;
+      padding: 16px; text-align: center;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none; border-top: 1px solid #1e293b;
+      margin: 32px 0;
+    }
+
+    /* ── Status bar ── */
+    #status-bar {
+      margin-top: 32px; text-align: center;
+      font-size: 0.8rem; color: #475569;
+    }
+
+    .pulse {
+      display: inline-block; width: 8px; height: 8px;
+      background: #4ade80; border-radius: 50%;
+      margin-right: 6px; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    #empty-state {
+      text-align: center; padding: 40px;
+      color: #475569; font-size: 1rem; display: none;
+    }
+
+    /* ── Attendance log ── */
+    .attendance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+    }
+
+    .att-row {
+      display: flex; align-items: center;
+      background: #1e293b; border-radius: 10px;
+      padding: 12px 16px; border: 1px solid #334155;
+      gap: 10px;
+    }
+
+    .att-emp { font-weight: 700; font-size: 0.95rem; color: #e2e8f0; flex: 1; }
+
+    .att-time {
+      font-size: 0.8rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 8px; white-space: nowrap;
+    }
+    .att-time.in  { background: #14532d; color: #4ade80; }
+    .att-time.out { background: #450a0a; color: #f87171; }
+    .att-time.nil { color: #475569; font-weight: 400; }
+
+    #attendance-empty {
+      text-align: center; padding: 40px;
+      color: #475569; font-size: 1rem; display: none;
+    }
+
+    /* ── Monthly Report ── */
+    .month-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    #month-picker {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+      color-scheme: dark;
+    }
+    #month-picker:focus { border-color: #38bdf8; }
+
+    .btn-export {
+      background: #16a34a;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-export:hover { background: #15803d; }
+    .btn-export:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    #monthly-record-count { font-size: 0.88rem; color: #94a3b8; }
+
+    #monthly-status {
+      text-align: center;
+      padding: 36px;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+
+    .monthly-table-wrapper {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      margin-bottom: 8px;
+    }
+
+    #monthly-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    #monthly-table thead { background: #1e293b; }
+
+    #monthly-table th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    #monthly-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid #1a2740;
+      color: #e2e8f0;
+    }
+
+    #monthly-table tbody tr { background: #0f172a; }
+    #monthly-table tbody tr:nth-child(even) { background: #111827; }
+    #monthly-table tbody tr:hover { background: #1d2d44; }
+    #monthly-table tbody tr:last-child td { border-bottom: none; }
+
+    .m-in    { color: #4ade80; font-weight: 600; }
+    .m-out   { color: #f87171; font-weight: 600; }
+    .m-nil   { color: #475569; }
+    .m-hours { color: #38bdf8; font-weight: 600; }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      body { padding: 16px 12px; }
+
+      /* Header stacks vertically */
+      header { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 20px; }
+      header h1 { font-size: 1.3rem; }
+      .header-right { width: 100%; justify-content: space-between; }
+      #user-email { display: none; }
+      #today-label { font-size: 0.8rem; padding: 6px 12px; }
+
+      /* 3-column lunch cards, shrunk */
+      .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+      .card { padding: 14px 6px; border-radius: 12px; }
+      .card .icon { font-size: 1.6rem; margin-bottom: 4px; }
+      .card .number { font-size: 2rem; }
+      .card .label { font-size: 0.65rem; letter-spacing: 0; }
+
+      /* Single-column lists */
+      .employee-list { grid-template-columns: 1fr; }
+      .attendance-grid { grid-template-columns: 1fr; }
+
+      /* Announcement form stacks */
+      .announce-form { flex-direction: column; }
+      .btn-post { width: 100%; }
+
+      /* Bigger touch targets on action buttons */
+      .btn-toggle, .btn-delete { padding: 10px 16px; font-size: 0.85rem; min-height: 44px; }
+
+      .divider { margin: 20px 0; }
+      .section-title { font-size: 0.85rem; }
+      .login-card { padding: 32px 20px; border-radius: 16px; }
+
+      /* Monthly report on mobile */
+      .month-controls { flex-direction: column; align-items: stretch; }
+      #month-picker { width: 100%; }
+      .btn-export { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Login screen (visible until authenticated) -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-logo">🏢</div>
+      <h2>KHH Admin Dashboard</h2>
+      <input class="login-field" type="email"    id="login-email"    placeholder="Email" autocomplete="username" />
+      <input class="login-field" type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+      <button class="btn-login" id="btn-signin">Sign In</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- Dashboard (hidden until authenticated) -->
+  <div id="dashboard">
+    <header>
+      <h1>🏢 KHH <span>Admin Dashboard</span></h1>
+      <div class="header-right">
+        <div id="today-label">Loading...</div>
+        <span id="user-email"></span>
+        <button class="btn-signout" id="btn-signout">Sign Out</button>
+      </div>
+    </header>
+
+    <!-- Lunch summary -->
+    <div class="section-title">🍱 Today's Lunch</div>
+    <div class="summary-grid" style="margin-top:12px;">
+      <div class="card total">
+        <div class="icon">👥</div>
+        <div class="number" id="count-total">–</div>
+        <div class="label">Responded</div>
+      </div>
+      <div class="card yes">
+        <div class="icon">✅</div>
+        <div class="number" id="count-yes">–</div>
+        <div class="label">Having Lunch</div>
+      </div>
+      <div class="card no">
+        <div class="icon">❌</div>
+        <div class="number" id="count-no">–</div>
+        <div class="label">Skipping Lunch</div>
+      </div>
+    </div>
+
+    <div class="section-title">Employee Responses</div>
+    <div id="empty-state">No responses yet for today.</div>
+    <div class="employee-list" id="employee-list"></div>
+
+    <hr class="divider" />
+
+    <!-- Today's attendance log -->
+    <div class="section-title">🕐 Today's Attendance</div>
+    <div id="attendance-empty">No attendance records yet for today.</div>
+    <div class="attendance-grid" id="attendance-list"></div>
+
+    <hr class="divider" />
+
+    <!-- Monthly Attendance Report -->
+    <div class="section-title">📊 Monthly Attendance Report</div>
+    <div class="month-controls">
+      <input type="month" id="month-picker" />
+      <button class="btn-export" id="btn-export-excel" disabled>⬇ Export Excel</button>
+      <span id="monthly-record-count"></span>
+    </div>
+    <div id="monthly-status">Select a month above to load records.</div>
+    <div class="monthly-table-wrapper" id="monthly-table-wrapper" style="display:none;">
+      <table id="monthly-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Employee ID</th>
+            <th>Clock In</th>
+            <th>Clock Out</th>
+            <th>Hours Worked</th>
+          </tr>
+        </thead>
+        <tbody id="monthly-body"></tbody>
+      </table>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Announcement manager -->
+    <div class="section-title">📢 Announcements</div>
+    <div class="announce-form">
+      <input type="text" id="announce-input" placeholder="Type announcement for the kiosk screen..." maxlength="200" />
+      <button class="btn-post" id="btn-post">Post</button>
+    </div>
+    <div class="announce-list" id="announce-list">
+      <div class="announce-empty">Loading announcements...</div>
+    </div>
+
+    <div id="status-bar"><span class="pulse"></span>Live – updates automatically</div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey:            "AIzaSyATUd529u_sfBP1-DxSSMvOZE_uRZ40Ucc",
+      authDomain:        "khh-attendance.firebaseapp.com",
+      projectId:         "khh-attendance",
+      storageBucket:     "khh-attendance.firebasestorage.app",
+      messagingSenderId: "220846431953",
+      appId:             "1:220846431953:web:a2bb8ae217ab62469feff0"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db   = firebase.firestore();
+    const auth = firebase.auth();
+
+    let unsubscribeLunch         = null;
+    let unsubscribeAnnouncements = null;
+    let unsubscribeAttendance    = null;
+
+    // ── Auth state ────────────────────────────────────────────────────
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('dashboard').style.display    = 'block';
+        document.getElementById('user-email').textContent     = user.email;
+        document.getElementById('login-error').textContent    = '';
+        initDashboard();
+        logAdminAction('login');
+      } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('dashboard').style.display    = 'none';
+        document.getElementById('user-email').textContent     = '';
+        stopListeners();
+      }
+    });
+
+    document.getElementById('btn-signin').addEventListener('click', signIn);
+    document.getElementById('login-password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') signIn();
+    });
+
+    function signIn() {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn      = document.getElementById('btn-signin');
+      const errorEl  = document.getElementById('login-error');
+
+      errorEl.textContent = '';
+      if (!email || !password) { errorEl.textContent = 'Please enter your email and password.'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+
+      auth.signInWithEmailAndPassword(email, password)
+        .catch(e => {
+          errorEl.textContent = 'Sign-in failed: ' + (e.code === 'auth/invalid-credential' ? 'Incorrect email or password.' : e.message);
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.textContent = 'Sign In';
+        });
+    }
+
+    document.getElementById('btn-signout').addEventListener('click', () => {
+      logAdminAction('logout');
+      auth.signOut();
+    });
+
+    // ── Audit logger ──────────────────────────────────────────────────
+    function logAdminAction(action, details) {
+      const user  = auth.currentUser;
+      const entry = Object.assign({
+        action,
+        adminEmail: user ? user.email : 'unknown',
+        adminUid:   user ? user.uid   : 'unknown',
+        timestamp:  firebase.firestore.Timestamp.now()
+      }, details || {});
+      db.collection('audit_logs').add(entry)
+        .catch(e => console.warn('Audit log failed:', e));
+    }
+
+    // ── Dashboard init ────────────────────────────────────────────────
+    function initDashboard() {
+      const today = new Date().toLocaleDateString('en-CA');
+      document.getElementById('today-label').textContent =
+        new Date().toLocaleDateString('en-MY', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+      // Auto-reload at midnight so the dashboard resets for the new day
+      const now      = new Date();
+      const midnight = new Date();
+      midnight.setHours(24, 0, 0, 0);
+      setTimeout(() => location.reload(), midnight - now);
+
+      startListeners(today);
+      loadMonthlyData();
+    }
+
+    function stopListeners() {
+      if (unsubscribeLunch)         { unsubscribeLunch();         unsubscribeLunch         = null; }
+      if (unsubscribeAnnouncements) { unsubscribeAnnouncements(); unsubscribeAnnouncements = null; }
+      if (unsubscribeAttendance)    { unsubscribeAttendance();    unsubscribeAttendance    = null; }
+    }
+
+    // ── Firestore listeners ───────────────────────────────────────────
+    function startListeners(today) {
+      unsubscribeLunch = db.collection('lunch_surveys')
+        .where('date', '==', today)
+        .onSnapshot(snapshot => {
+          const rows    = snapshot.docs.map(doc => doc.data());
+          const yesRows = rows.filter(r => r.hasLunch === true);
+          const noRows  = rows.filter(r => r.hasLunch === false);
+
+          document.getElementById('count-total').textContent = rows.length;
+          document.getElementById('count-yes').textContent   = yesRows.length;
+          document.getElementById('count-no').textContent    = noRows.length;
+
+          const list  = document.getElementById('employee-list');
+          const empty = document.getElementById('empty-state');
+          list.innerHTML = '';
+
+          if (rows.length === 0) { empty.style.display = 'block'; return; }
+          empty.style.display = 'none';
+
+          rows.sort((a, b) => {
+            if (a.hasLunch !== b.hasLunch) return a.hasLunch ? -1 : 1;
+            return (a.employeeId || '').localeCompare(b.employeeId || '');
+          });
+
+          rows.forEach(row => {
+            const div = document.createElement('div');
+            div.className = 'employee-row';
+
+            const idSpan = document.createElement('span');
+            idSpan.className = 'employee-id';
+            idSpan.textContent = row.employeeId;   // textContent — safe against XSS
+
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + (row.hasLunch ? 'yes' : 'no');
+            badge.textContent = row.hasLunch ? 'LUNCH ✅' : 'NO LUNCH ❌';
+
+            div.appendChild(idSpan);
+            div.appendChild(badge);
+            list.appendChild(div);
+          });
+        }, () => {
+          document.getElementById('status-bar').textContent = '⚠ Connection error – check Firestore rules';
+        });
+
+      // Attendance log for today
+      const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
+
+      unsubscribeAttendance = db.collection('attendance_logs')
+        .where('timestamp', '>=', firebase.firestore.Timestamp.fromDate(startOfDay))
+        .where('timestamp', '<=', firebase.firestore.Timestamp.fromDate(endOfDay))
+        .orderBy('timestamp', 'asc')
+        .onSnapshot(snapshot => {
+          const empMap = {};
+          snapshot.docs.forEach(doc => {
+            const d    = doc.data();
+            const ts   = d.timestamp?.toDate ? d.timestamp.toDate() : new Date(d.timestamp);
+            const time = ts.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+            if (!empMap[d.employeeId]) empMap[d.employeeId] = { clockIn: null, clockOut: null };
+            if (d.recordType === 'CLOCK_IN')  empMap[d.employeeId].clockIn  = time;
+            if (d.recordType === 'CLOCK_OUT') empMap[d.employeeId].clockOut = time;
+          });
+
+          const list  = document.getElementById('attendance-list');
+          const empty = document.getElementById('attendance-empty');
+          list.innerHTML = '';
+
+          const entries = Object.entries(empMap);
+          if (entries.length === 0) { empty.style.display = 'block'; return; }
+          empty.style.display = 'none';
+
+          entries.sort((a, b) => a[0].localeCompare(b[0]));
+          entries.forEach(([empId, times]) => {
+            const row = document.createElement('div');
+            row.className = 'att-row';
+
+            const idEl = document.createElement('span');
+            idEl.className = 'att-emp';
+            idEl.textContent = empId;
+
+            const inEl = document.createElement('span');
+            inEl.className = times.clockIn ? 'att-time in' : 'att-time nil';
+            inEl.textContent = times.clockIn ? '▶ ' + times.clockIn : '▶ –';
+
+            const outEl = document.createElement('span');
+            outEl.className = times.clockOut ? 'att-time out' : 'att-time nil';
+            outEl.textContent = times.clockOut ? '◀ ' + times.clockOut : '◀ –';
+
+            row.appendChild(idEl);
+            row.appendChild(inEl);
+            row.appendChild(outEl);
+            list.appendChild(row);
+          });
+        });
+
+      unsubscribeAnnouncements = db.collection('announcements')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+          const list = document.getElementById('announce-list');
+          list.innerHTML = '';
+
+          if (snapshot.empty) {
+            const empty = document.createElement('div');
+            empty.className = 'announce-empty';
+            empty.textContent = 'No announcements yet.';
+            list.appendChild(empty);
+            return;
+          }
+
+          snapshot.docs.forEach(doc => {
+            const data   = doc.data();
+            const active = data.isActive === true;
+
+            const div = document.createElement('div');
+            div.className = 'announce-item';
+
+            const dot = document.createElement('span');
+            dot.className = 'announce-dot ' + (active ? 'active' : 'inactive');
+
+            const msg = document.createElement('span');
+            msg.className = 'announce-msg' + (active ? '' : ' inactive');
+            msg.textContent = data.message;         // textContent — safe against XSS
+
+            const actions = document.createElement('div');
+            actions.className = 'announce-actions';
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'btn-toggle';
+            toggleBtn.textContent = active ? 'Deactivate' : 'Activate';
+            toggleBtn.addEventListener('click', () => toggleAnnouncement(doc.id, active));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn-delete';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.addEventListener('click', () => deleteAnnouncement(doc.id));
+
+            actions.appendChild(toggleBtn);
+            actions.appendChild(deleteBtn);
+            div.appendChild(dot);
+            div.appendChild(msg);
+            div.appendChild(actions);
+            list.appendChild(div);
+          });
+        });
+    }
+
+    // ── Announcement actions ──────────────────────────────────────────
+    document.getElementById('btn-post').addEventListener('click', postAnnouncement);
+    document.getElementById('announce-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') postAnnouncement();
+    });
+
+    function postAnnouncement() {
+      const input = document.getElementById('announce-input');
+      const msg   = input.value.trim();
+      if (!msg || msg.length > 200) return;
+
+      db.collection('announcements').add({
+        message:   msg,
+        isActive:  true,
+        createdAt: firebase.firestore.Timestamp.now()
+      }).then(() => {
+        input.value = '';
+        logAdminAction('post_announcement', { message: msg });
+      }).catch(e => alert('Failed to post: ' + e.message));
+    }
+
+    function toggleAnnouncement(id, currentActive) {
+      db.collection('announcements').doc(id)
+        .update({ isActive: !currentActive })
+        .then(() => logAdminAction('toggle_announcement', { docId: id, newState: !currentActive }));
+    }
+
+    function deleteAnnouncement(id) {
+      if (confirm('Delete this announcement?')) {
+        db.collection('announcements').doc(id).delete()
+          .then(() => logAdminAction('delete_announcement', { docId: id }));
+      }
+    }
+
+    // ── Monthly Report ────────────────────────────────────────────────
+    let monthlyRows = [];
+
+    // Pre-fill picker to current month
+    (function () {
+      const now = new Date();
+      const y   = now.getFullYear();
+      const m   = String(now.getMonth() + 1).padStart(2, '0');
+      document.getElementById('month-picker').value = `${y}-${m}`;
+    })();
+
+    document.getElementById('month-picker').addEventListener('change', loadMonthlyData);
+    document.getElementById('btn-export-excel').addEventListener('click', exportToExcel);
+
+    function loadMonthlyData() {
+      const val = document.getElementById('month-picker').value;
+      if (!val) return;
+
+      const [year, month] = val.split('-').map(Number);
+      const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
+      const endDate   = new Date(year, month,     0, 23, 59, 59, 999);
+
+      const statusEl  = document.getElementById('monthly-status');
+      const wrapperEl = document.getElementById('monthly-table-wrapper');
+      const exportBtn = document.getElementById('btn-export-excel');
+      const countEl   = document.getElementById('monthly-record-count');
+
+      statusEl.textContent    = 'Loading…';
+      statusEl.style.display  = 'block';
+      wrapperEl.style.display = 'none';
+      exportBtn.disabled      = true;
+      countEl.textContent     = '';
+      monthlyRows             = [];
+
+      db.collection('attendance_logs')
+        .where('timestamp', '>=', firebase.firestore.Timestamp.fromDate(startDate))
+        .where('timestamp', '<=', firebase.firestore.Timestamp.fromDate(endDate))
+        .orderBy('timestamp', 'asc')
+        .get()
+        .then(snapshot => {
+          if (snapshot.empty) {
+            statusEl.textContent = 'No records found for this month.';
+            return;
+          }
+
+          // Group by employee+day so each employee has one row per day
+          const dayMap = {};
+          snapshot.docs.forEach(doc => {
+            const d      = doc.data();
+            const ts     = d.timestamp?.toDate ? d.timestamp.toDate() : new Date(d.timestamp);
+            const dateKey = ts.toLocaleDateString('en-CA');          // YYYY-MM-DD
+            const key     = dateKey + '|' + (d.employeeId || '');
+            if (!dayMap[key]) dayMap[key] = { date: dateKey, empId: d.employeeId || '–', clockIn: null, clockOut: null };
+            if (d.recordType === 'CLOCK_IN'  && !dayMap[key].clockIn)  dayMap[key].clockIn  = ts;
+            if (d.recordType === 'CLOCK_OUT')                           dayMap[key].clockOut = ts;
+          });
+
+          monthlyRows = Object.values(dayMap).sort((a, b) =>
+            a.date !== b.date ? a.date.localeCompare(b.date) : a.empId.localeCompare(b.empId)
+          );
+
+          renderMonthlyTable(monthlyRows);
+
+          statusEl.style.display  = 'none';
+          wrapperEl.style.display = 'block';
+          exportBtn.disabled      = false;
+          countEl.textContent     = `${monthlyRows.length} record${monthlyRows.length !== 1 ? 's' : ''}`;
+        })
+        .catch(err => {
+          statusEl.textContent = '⚠ Failed to load: ' + err.message;
+        });
+    }
+
+    function renderMonthlyTable(rows) {
+      const tbody = document.getElementById('monthly-body');
+      tbody.innerHTML = '';
+      rows.forEach(row => {
+        const fmt    = { hour: '2-digit', minute: '2-digit', hour12: true };
+        const inStr  = row.clockIn  ? row.clockIn.toLocaleTimeString('en-MY', fmt)  : null;
+        const outStr = row.clockOut ? row.clockOut.toLocaleTimeString('en-MY', fmt) : null;
+
+        let hoursStr = '–';
+        if (row.clockIn && row.clockOut) {
+          const ms  = row.clockOut - row.clockIn;
+          const h   = Math.floor(ms / 3_600_000);
+          const min = Math.floor((ms % 3_600_000) / 60_000);
+          hoursStr  = `${h}h ${String(min).padStart(2, '0')}m`;
+        }
+
+        const tr = document.createElement('tr');
+        const td = (text, cls) => {
+          const el = document.createElement('td');
+          if (cls) el.className = cls;
+          el.textContent = text;
+          return el;
+        };
+        tr.appendChild(td(row.date));
+        tr.appendChild(td(row.empId));
+        tr.appendChild(td(inStr  || '–', inStr  ? 'm-in'  : 'm-nil'));
+        tr.appendChild(td(outStr || '–', outStr ? 'm-out' : 'm-nil'));
+        tr.appendChild(td(hoursStr, row.clockIn && row.clockOut ? 'm-hours' : 'm-nil'));
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportToExcel() {
+      if (!monthlyRows.length) return;
+
+      const val       = document.getElementById('month-picker').value;
+      const [y, m]    = val.split('-').map(Number);
+      const monthName = new Date(y, m - 1, 1).toLocaleString('en-MY', { month: 'long', year: 'numeric' });
+      const fmt       = { hour: '2-digit', minute: '2-digit', hour12: true };
+
+      const wsData = [['Date', 'Employee ID', 'Clock In', 'Clock Out', 'Hours Worked']];
+      monthlyRows.forEach(row => {
+        const inStr  = row.clockIn  ? row.clockIn.toLocaleTimeString('en-MY', fmt)  : '';
+        const outStr = row.clockOut ? row.clockOut.toLocaleTimeString('en-MY', fmt) : '';
+        let hoursStr = '';
+        if (row.clockIn && row.clockOut) {
+          const ms  = row.clockOut - row.clockIn;
+          const h   = Math.floor(ms / 3_600_000);
+          const min = Math.floor((ms % 3_600_000) / 60_000);
+          hoursStr  = `${h}h ${String(min).padStart(2, '0')}m`;
+        }
+        wsData.push([row.date, row.empId, inStr, outStr, hoursStr]);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch: 13 }, { wch: 18 }, { wch: 13 }, { wch: 13 }, { wch: 14 }];
+
+      // Bold header row
+      const headerRange = XLSX.utils.decode_range(ws['!ref']);
+      for (let c = headerRange.s.c; c <= headerRange.e.c; c++) {
+        const cellAddr = XLSX.utils.encode_cell({ r: 0, c });
+        if (ws[cellAddr]) ws[cellAddr].s = { font: { bold: true } };
+      }
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+      XLSX.writeFile(wb, `KHH_Attendance_${val}.xlsx`);
+
+      logAdminAction('export_excel', { month: val, rowCount: monthlyRows.length });
+    }
+  </script>
+</body>
+</html>

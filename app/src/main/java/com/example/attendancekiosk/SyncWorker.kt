@@ -7,7 +7,8 @@ import androidx.work.WorkerParameters
 import com.example.attendancekiosk.data.AttendanceDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
-import java.util.Date // This import fixes the timestamp formatting
+import com.google.firebase.Timestamp
+import java.util.Date
 
 class SyncWorker(appContext: Context, workerParams: WorkerParameters) :
     CoroutineWorker(appContext, workerParams) {
@@ -29,7 +30,7 @@ class SyncWorker(appContext: Context, workerParams: WorkerParameters) :
                 // 2. Prepare the data for Firebase (Timestamp is now formatted nicely)
                 val logData = hashMapOf(
                     "employeeId" to record.employeeId,
-                    "timestamp" to Date(record.timestamp),
+                    "timestamp" to Timestamp(Date(record.timestamp)),
                     "recordType" to record.recordType
                 )
 

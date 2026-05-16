@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.attendancekiosk" />
+                  <option name="mobileSdkAppId" value="1:220846431953:android:60d382cc011c8ee19feff0" />
+                  <option name="projectId" value="khh-attendance" />
+                  <option name="projectNumber" value="220846431953" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

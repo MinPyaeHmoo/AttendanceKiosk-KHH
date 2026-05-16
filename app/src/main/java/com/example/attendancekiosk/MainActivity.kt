@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.WindowManager
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.TextClock
@@ -30,6 +31,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -41,8 +43,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -51,12 +56,17 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.attendancekiosk.data.AttendanceDatabase
 import com.example.attendancekiosk.data.AttendanceRecord
-import kotlinx.coroutines.CoroutineScope
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,17 +81,29 @@ class MainActivity : ComponentActivity() {
     private lateinit var qrAnalyzer: QrCodeAnalyzer
     private lateinit var viewFinder: PreviewView
 
-    // UI State Variables
-    private var statusText by mutableStateOf("Ready for next employee")
+    private var statusText by mutableStateOf("QR ကုဒ် ပြပါ")
     private var showButtons by mutableStateOf(false)
     private var pendingEmployeeId: String? = null
-    private var successMessage by mutableStateOf<String?>(null) // NEW: For the Success UI
+    private var successMessage by mutableStateOf<String?>(null)
+    private var showLunchSurvey by mutableStateOf(false)
+    private var lunchSurveyEmployeeId: String? = null
+    private var announcements by mutableStateOf<List<String>>(emptyList())
+    private var lunchSuccessMessage by mutableStateOf<String?>(null)
 
-    private val timeoutHandler = Handler(Looper.getMainLooper())
+    private val timeoutHandler  = Handler(Looper.getMainLooper())
     private var timeoutRunnable: Runnable? = null
+    private var announcementListener: ListenerRegistration? = null
+    private var scanTimeoutMs    = 10_000L
+
+    private var isStandby by mutableStateOf(false)
+    private val standbyHandler  = Handler(Looper.getMainLooper())
+    private val standbyRunnable = Runnable { enterStandby() }
+    private var standbyTimeoutMs = 30_000L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -90,11 +112,16 @@ class MainActivity : ComponentActivity() {
         viewFinder = PreviewView(this)
         cameraExecutor = Executors.newSingleThreadExecutor()
 
+        fetchRemoteConfig()
+
         if (allPermissionsGranted()) {
             startCamera()
         } else {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
+
+        setupAnnouncementListener()
+        resetStandbyTimer()
 
         setContent {
             KioskScreen(
@@ -102,34 +129,144 @@ class MainActivity : ComponentActivity() {
                 statusText = statusText,
                 showButtons = showButtons,
                 successMessage = successMessage,
+                lunchSuccessMessage = lunchSuccessMessage,
+                showLunchSurvey = showLunchSurvey,
+                announcements = announcements,
+                isStandby = isStandby,
                 onClockIn = { processAction("CLOCK_IN") },
-                onClockOut = { processAction("CLOCK_OUT") }
+                onClockOut = { processAction("CLOCK_OUT") },
+                onLunchYes = { saveLunchResponse(true) },
+                onLunchNo = { saveLunchResponse(false) },
+                onWakeUp = { exitStandby(); resetStandbyTimer() }
             )
         }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            if (allPermissionsGranted()) {
+                startCamera()
+            } else {
+                statusText = "ကင်မရာ ခွင့်ပြုချက် လိုအပ်သည်"
+                Toast.makeText(this, "ကင်မရာ ခွင့်မပြုပါ။ ဆက်တင်တွင် ခွင့်ပြုပါ။", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        announcementListener?.remove()
+        cameraExecutor.shutdown()
+        standbyHandler.removeCallbacks(standbyRunnable)
+        timeoutHandler.removeCallbacksAndMessages(null)
+    }
+
+    private fun fetchRemoteConfig() {
+        val remoteConfig = FirebaseRemoteConfig.getInstance()
+        remoteConfig.setDefaultsAsync(mapOf(
+            "scan_timeout_ms"    to 10_000L,
+            "standby_timeout_ms" to 30_000L
+        ))
+        remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                scanTimeoutMs    = remoteConfig.getLong("scan_timeout_ms").coerceAtLeast(3_000L)
+                standbyTimeoutMs = remoteConfig.getLong("standby_timeout_ms").coerceAtLeast(10_000L)
+                Log.d(TAG, "Remote config — scan: ${scanTimeoutMs}ms  standby: ${standbyTimeoutMs}ms")
+            }
+        }
+    }
+
+    private fun enterStandby() {
+        isStandby = true
+        setScreenBrightness(0.08f)
+        if (::qrAnalyzer.isInitialized) qrAnalyzer.setStandbyMode(true)
+        Log.d(TAG, "Standby entered")
+    }
+
+    private fun exitStandby() {
+        if (!isStandby) return
+        isStandby = false
+        setScreenBrightness(-1f)   // restore system brightness
+        if (::qrAnalyzer.isInitialized) qrAnalyzer.setStandbyMode(false)
+        Log.d(TAG, "Standby exited")
+    }
+
+    private fun resetStandbyTimer() {
+        standbyHandler.removeCallbacks(standbyRunnable)
+        standbyHandler.postDelayed(standbyRunnable, standbyTimeoutMs)
+    }
+
+    private fun setScreenBrightness(brightness: Float) {
+        val lp = window.attributes
+        lp.screenBrightness = brightness
+        window.attributes = lp
+    }
+
+    private fun setupAnnouncementListener() {
+        announcementListener = FirebaseFirestore.getInstance()
+            .collection("announcements")
+            .whereEqualTo("isActive", true)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                announcements = snapshot.documents.mapNotNull { it.getString("message") }
+            }
     }
 
     private fun processAction(actionType: String) {
         timeoutRunnable?.let { timeoutHandler.removeCallbacks(it) }
 
         pendingEmployeeId?.let { id ->
-            CoroutineScope(Dispatchers.IO).launch {
+            lifecycleScope.launch(Dispatchers.IO) {
                 val db = AttendanceDatabase.getDatabase(applicationContext)
+
                 val lastRecord = db.attendanceDao().getLatestRecordForEmployee(id)
                 val lastAction = lastRecord?.recordType
 
-                if (actionType == "CLOCK_IN" && lastAction == "CLOCK_IN") {
-                    runOnUiThread { resetKiosk("Error: You are already Clocked In!") }
-                } else if (actionType == "CLOCK_OUT" && (lastAction == "CLOCK_OUT" || lastAction == null)) {
-                    runOnUiThread { resetKiosk("Error: You must Clock In first!") }
+                // TODO: uncomment after testing — prevents clocking in twice without clocking out
+                // if (actionType == "CLOCK_IN" && lastAction == "CLOCK_IN") {
+                //     runOnUiThread { resetKiosk("အမှား: ဦးဆုံး ထွက်ချိန်မှတ်တမ်းတင်ပြီးမှ ပြန်ဝင်ပါ!") }
+                // } else
+                if (actionType == "CLOCK_OUT" && (lastAction == "CLOCK_OUT" || lastAction == null)) {
+                    runOnUiThread { resetKiosk("အမှား: ဦးစွာ ဝင်ချိန်မှတ်တမ်းတင်ရမည်!") }
                 } else {
                     runOnUiThread {
                         showButtons = false
-                        statusText = "Logging $actionType..."
+                        statusText = "မှတ်တမ်းတင်နေသည်..."
                         takePhotoWithWatermark(id, actionType)
                     }
                 }
             }
         }
+    }
+
+    private fun saveLunchResponse(hasLunch: Boolean) {
+        val id = lunchSurveyEmployeeId ?: run { resetKiosk(); return }
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val data = hashMapOf(
+            "employeeId" to id,
+            "date" to today,
+            "hasLunch" to hasLunch,
+            "timestamp" to Timestamp.now()
+        )
+        FirebaseFirestore.getInstance()
+            .collection("lunch_surveys")
+            .add(data)
+            .addOnSuccessListener { Log.d(TAG, "Lunch survey saved for $id") }
+            .addOnFailureListener { e -> Log.e(TAG, "Failed to save lunch survey", e) }
+
+        showLunchSurvey = false
+        lunchSurveyEmployeeId = null
+
+        lunchSuccessMessage = if (hasLunch) "နေ့လည်စာ မှတ်တမ်းတင်ပြီး 🍱" else "မှတ်တမ်းတင်ပြီး 👍"
+        timeoutHandler.postDelayed({
+            lunchSuccessMessage = null
+            resetKiosk()
+        }, 2500)
     }
 
     private fun startCamera() {
@@ -148,16 +285,18 @@ class MainActivity : ComponentActivity() {
             qrAnalyzer = QrCodeAnalyzer(
                 onValidScan = { scannedData ->
                     runOnUiThread {
+                        exitStandby()
+                        resetStandbyTimer()
                         pendingEmployeeId = scannedData
-                        statusText = "ID: $scannedData\nPlease select action"
+                        statusText = "ID: $scannedData\nလုပ်ဆောင်ချက် ရွေးချယ်ပါ"
                         showButtons = true
 
-                        timeoutRunnable = Runnable { if (showButtons) resetKiosk("Scan timed out") }
-                        timeoutHandler.postDelayed(timeoutRunnable!!, 10000)
+                        timeoutRunnable = Runnable { if (showButtons) resetKiosk("QR ကုဒ် ဖတ်ရမည့် အချိန် ကုန်သွားပါပြီ") }
+                        timeoutHandler.postDelayed(timeoutRunnable!!, scanTimeoutMs)
                     }
                 },
                 onNoFaceDetected = {
-                    runOnUiThread { statusText = "Please look at the camera!" }
+                    runOnUiThread { statusText = "ကျေးဇူးပြု၍ ကင်မရာကို ကြည့်ပါ!" }
                 }
             )
 
@@ -168,13 +307,12 @@ class MainActivity : ComponentActivity() {
                 cameraProvider.bindToLifecycle(
                     this, CameraSelector.DEFAULT_FRONT_CAMERA, preview, imageCapture, imageAnalysis
                 )
-            } catch(exc: Exception) {
+            } catch (exc: Exception) {
                 Log.e(TAG, "Camera connection failed", exc)
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    // NEW: Takes photo in memory, draws watermark, saves to gallery
     private fun takePhotoWithWatermark(employeeId: String, recordType: String) {
         val imageCapture = imageCapture ?: return
 
@@ -183,22 +321,23 @@ class MainActivity : ComponentActivity() {
             object : ImageCapture.OnImageCapturedCallback() {
 
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    // 1. Convert ImageProxy to Bitmap and fix rotation
                     val originalBitmap = image.toBitmap()
                     val rotation = image.imageInfo.rotationDegrees
                     image.close()
 
                     val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-                    val rotatedBitmap = Bitmap.createBitmap(
+                    val rotated = Bitmap.createBitmap(
                         originalBitmap, 0, 0, originalBitmap.width, originalBitmap.height, matrix, true
                     )
+                    // createBitmap may return the original (immutable) bitmap when the matrix is
+                    // identity; always make an explicit mutable copy so Canvas can draw on it.
+                    val mutableBitmap = rotated.copy(rotated.config ?: Bitmap.Config.ARGB_8888, true)
+                    if (mutableBitmap !== rotated) rotated.recycle()
 
-                    // 2. Draw the Watermark on the Bitmap
-                    val canvas = Canvas(rotatedBitmap)
+                    val canvas = Canvas(mutableBitmap)
                     val paint = Paint().apply {
                         color = AndroidColor.YELLOW
-                        // Dynamically size text based on camera resolution
-                        textSize = rotatedBitmap.height * 0.035f
+                        textSize = mutableBitmap.height * 0.035f
                         typeface = Typeface.DEFAULT_BOLD
                         setShadowLayer(5f, 2f, 2f, AndroidColor.BLACK)
                         isAntiAlias = true
@@ -207,13 +346,10 @@ class MainActivity : ComponentActivity() {
                     val currentTimeMs = System.currentTimeMillis()
                     val timeText = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(currentTimeMs))
                     val watermarkText = "ID: $employeeId | $recordType | $timeText"
+                    canvas.drawText(watermarkText, 50f, mutableBitmap.height - 80f, paint)
 
-                    // Draw at bottom-left corner
-                    canvas.drawText(watermarkText, 50f, rotatedBitmap.height - 80f, paint)
-
-                    // 3. Save modified Bitmap to Gallery and DB
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val savedUri = saveBitmapToGallery(rotatedBitmap, employeeId, currentTimeMs)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        val savedUri = saveBitmapToGallery(mutableBitmap, employeeId, currentTimeMs)
 
                         if (savedUri != null) {
                             val record = AttendanceRecord(
@@ -228,18 +364,19 @@ class MainActivity : ComponentActivity() {
                             val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>().build()
                             WorkManager.getInstance(applicationContext).enqueue(syncRequest)
 
-                            // Show Beautiful Success UI
-                            val friendlyAction = if (recordType == "CLOCK_IN") "Clock In" else "Clock Out"
-                            runOnUiThread { showSuccessAndReset("$friendlyAction Successful!") }
+                            val friendlyAction = if (recordType == "CLOCK_IN") "ဝင်ချိန်မှတ်တမ်းတင်ပြီး!" else "ထွက်ချိန်မှတ်တမ်းတင်ပြီး!"
+                            runOnUiThread {
+                                showSuccessAndReset(friendlyAction, recordType, employeeId)
+                            }
                         } else {
-                            runOnUiThread { resetKiosk("Error saving photo to gallery.") }
+                            runOnUiThread { resetKiosk("ဓာတ်ပုံသိမ်းဆည်းရာတွင် အမှားဖြစ်သည်") }
                         }
                     }
                 }
 
                 override fun onError(exc: ImageCaptureException) {
                     Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
-                    runOnUiThread { resetKiosk("Camera Error: Could not save photo") }
+                    runOnUiThread { resetKiosk("ကင်မရာ အမှားဖြစ်သည်။ ဓာတ်ပုံမရပါ") }
                 }
             }
         )
@@ -264,21 +401,28 @@ class MainActivity : ComponentActivity() {
         return uri
     }
 
-    private fun showSuccessAndReset(message: String) {
+    private fun showSuccessAndReset(message: String, recordType: String, employeeId: String) {
         successMessage = message
-        // Keep the success screen up for 3 seconds, then reset automatically
         timeoutHandler.postDelayed({
             successMessage = null
-            resetKiosk()
-        }, 3000)
+            if (recordType == "CLOCK_IN") {
+                lunchSurveyEmployeeId = employeeId
+                showLunchSurvey = true
+            } else {
+                resetKiosk()
+            }
+        }, 2000)
     }
 
     private fun resetKiosk(toastMessage: String? = null) {
         toastMessage?.let { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
         showButtons = false
-        statusText = "Ready for next employee"
+        showLunchSurvey = false
+        statusText = "QR ကုဒ် ပြပါ"
         pendingEmployeeId = null
-        qrAnalyzer.resumeScanning()
+        lunchSurveyEmployeeId = null
+        if (::qrAnalyzer.isInitialized) qrAnalyzer.resumeScanning()
+        resetStandbyTimer()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -306,113 +450,382 @@ fun KioskScreen(
     statusText: String,
     showButtons: Boolean,
     successMessage: String?,
+    lunchSuccessMessage: String?,
+    showLunchSurvey: Boolean,
+    announcements: List<String>,
+    isStandby: Boolean,
     onClockIn: () -> Unit,
-    onClockOut: () -> Unit
+    onClockOut: () -> Unit,
+    onLunchYes: () -> Unit,
+    onLunchNo: () -> Unit,
+    onWakeUp: () -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    val hasAnnouncements = announcements.isNotEmpty()
 
+    var currentAnnouncementIndex by remember { mutableIntStateOf(0) }
+    LaunchedEffect(announcements) {
+        currentAnnouncementIndex = 0
+        if (announcements.size > 1) {
+            while (true) {
+                delay(5000)
+                currentAnnouncementIndex = (currentAnnouncementIndex + 1) % announcements.size
+            }
+        }
+    }
+
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        val isTablet    = maxWidth  >= 600.dp
+        val isLandscape = maxWidth  > maxHeight
+
+        // Responsive sizing — scales up for tablets / landscape 16:9 screens
+        val clockTextSize    = if (isTablet) 80f   else 60f
+        val dateTextSize     = if (isTablet) 26f   else 20f
+        val announceFontSz   = if (isTablet) 30.sp else 24.sp
+        val statusFontSz     = if (isTablet) 24.sp else 20.sp
+        val scannerSize      = if (isTablet) 380.dp else 280.dp
+        val scannerOffsetY   = if (isLandscape) 0.dp else 28.dp
+        val btnWidth         = if (isTablet) 200.dp else 155.dp
+        val btnHeight        = if (isTablet) 90.dp  else 72.dp
+        val btnFontSz        = if (isTablet) 26.sp  else 20.sp
+        val successIconSz    = if (isTablet) 160.dp else 120.dp
+        val successFontSz    = if (isTablet) 40.sp  else 32.sp
+        val lunchBtnWidth    = if (isTablet) 190.dp else 148.dp
+        val lunchEmojiSz     = if (isTablet) 90.sp  else 64.sp
+        val lunchQnFontSz    = if (isTablet) 34.sp  else 28.sp
+        val lunchBtnFontSz   = if (isTablet) 26.sp  else 22.sp
+
+        // Camera preview — full screen
         AndroidView(factory = { cameraPreviewView }, modifier = Modifier.fillMaxSize())
 
-        // Clocks
+        // Top gradient vignette for readability
+        Box(
+            modifier = Modifier
+                .fillMaxWidth().height(300.dp)
+                .align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color(0xD9000000), Color.Transparent)))
+        )
+
+        // Bottom gradient vignette
+        Box(
+            modifier = Modifier
+                .fillMaxWidth().height(260.dp)
+                .align(Alignment.BottomCenter)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))
+        )
+
+        // ── Announcement bar — TOP ──────────────────────────────────
+        if (hasAnnouncements) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFF0C2340), Color(0xFF0EA5E9), Color(0xFF0C2340))
+                        )
+                    )
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
+            ) {
+                Text("📢", fontSize = 24.sp, modifier = Modifier.padding(end = 10.dp))
+                Text(
+                    text = announcements[currentAnnouncementIndex.coerceIn(0, announcements.size - 1)],
+                    color = Color.White,
+                    fontSize = announceFontSz,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (announcements.size > 1) {
+                    Text(
+                        text = "${currentAnnouncementIndex + 1}/${announcements.size}",
+                        color = Color(0xAAFFFFFF),
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(start = 10.dp)
+                    )
+                }
+            }
+        }
+
+        // ── Clock + Branding ────────────────────────────────────────
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = if (hasAnnouncements) 82.dp else 48.dp)
         ) {
+            Text(
+                text = "KHH ATTENDANCE",
+                color = Color(0xFF38BDF8),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 4.sp
+            )
+            Spacer(modifier = Modifier.height(6.dp))
             AndroidView(factory = { ctx ->
                 TextClock(ctx).apply {
                     format12Hour = "hh:mm a"
-                    textSize = 64f
+                    textSize = clockTextSize
                     setTextColor(AndroidColor.WHITE)
                     typeface = Typeface.DEFAULT_BOLD
-                    setShadowLayer(4f, 2f, 2f, AndroidColor.BLACK)
+                    setShadowLayer(8f, 0f, 3f, AndroidColor.parseColor("#66000000"))
                 }
             })
             AndroidView(factory = { ctx ->
                 TextClock(ctx).apply {
                     format12Hour = "EEEE, MMMM dd"
-                    textSize = 24f
-                    setTextColor(AndroidColor.LTGRAY)
-                    setShadowLayer(4f, 2f, 2f, AndroidColor.BLACK)
+                    textSize = dateTextSize
+                    setTextColor(AndroidColor.parseColor("#94A3B8"))
+                    setShadowLayer(4f, 0f, 1f, AndroidColor.BLACK)
                 }
             })
         }
 
-        // Target Box
-        Box(
+        // ── Scanner frame with corner markers ───────────────────────
+        ScannerFrame(
             modifier = Modifier
-                .size(280.dp)
                 .align(Alignment.Center)
-                .offset(y = 40.dp)
-                .border(4.dp, Color.White, RoundedCornerShape(24.dp))
+                .offset(y = scannerOffsetY),
+            frameSize = scannerSize
         )
 
-        // Status Text
-        if (!showButtons && successMessage == null) {
-            Text(
-                text = statusText,
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+        // ── Status chip ─────────────────────────────────────────────
+        if (!showButtons && successMessage == null && lunchSuccessMessage == null && !showLunchSurvey) {
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 64.dp)
-                    .background(Color(0xB3000000), RoundedCornerShape(32.dp))
-                    .padding(horizontal = 32.dp, vertical = 16.dp)
-            )
+                    .padding(bottom = 48.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(50.dp))
+                    .padding(horizontal = 36.dp, vertical = 14.dp)
+            ) {
+                Text(
+                    text = statusText,
+                    color = Color.White,
+                    fontSize = statusFontSz,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
 
-        // Action Buttons
-        if (showButtons && successMessage == null) {
-            Row(
-                horizontalArrangement = Arrangement.Center,
+        // ── Action buttons ──────────────────────────────────────────
+        if (showButtons && successMessage == null && !showLunchSurvey) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 64.dp)
-                    .background(Color(0xB3000000), RoundedCornerShape(32.dp))
-                    .padding(24.dp)
+                    .padding(bottom = 40.dp)
+                    .background(Color(0xD9000000), RoundedCornerShape(28.dp))
+                    .padding(horizontal = 28.dp, vertical = 24.dp)
             ) {
-                Button(
-                    onClick = onClockIn,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                    modifier = Modifier.size(width = 160.dp, height = 80.dp)
-                ) {
-                    Text("CLOCK IN", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Button(
-                    onClick = onClockOut,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336)),
-                    modifier = Modifier.size(width = 160.dp, height = 80.dp)
-                ) {
-                    Text("CLOCK OUT", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = statusText,
+                    color = Color(0xFF94A3B8),
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 18.dp)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = onClockIn,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF16A34A),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(width = btnWidth, height = btnHeight)
+                    ) {
+                        Text("ဝင်ချိန်", fontSize = btnFontSz, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = onClockOut,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFDC2626),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.size(width = btnWidth, height = btnHeight)
+                    ) {
+                        Text("ထွက်ချိန်", fontSize = btnFontSz, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
 
-        // NEW: Giant Success Overlay UI
+        // ── Clock-in/out success overlay ────────────────────────────
         if (successMessage != null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xD9000000)), // Semi-transparent black background
+                modifier = Modifier.fillMaxSize().background(Color(0xE0000000)),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(Color(0xFF1E293B), RoundedCornerShape(32.dp))
+                        .padding(horizontal = 56.dp, vertical = 48.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Success",
-                        tint = Color(0xFF4CAF50), // Green Checkmark
-                        modifier = Modifier.size(160.dp)
+                        contentDescription = null,
+                        tint = Color(0xFF22C55E),
+                        modifier = Modifier.size(successIconSz)
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = successMessage,
                         color = Color.White,
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = successFontSz,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
                     )
                 }
             }
         }
+
+        // ── Lunch thank-you overlay ─────────────────────────────────
+        if (lunchSuccessMessage != null) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xE0000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(Color(0xFF1E293B), RoundedCornerShape(32.dp))
+                        .padding(horizontal = 56.dp, vertical = 48.dp)
+                ) {
+                    Text("✅", fontSize = 80.sp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = lunchSuccessMessage,
+                        color = Color.White,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        // ── Standby screen-saver ────────────────────────────────────
+        if (isStandby) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF080D18))
+                    .clickable { onWakeUp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "KHH ATTENDANCE",
+                        color = Color(0xFF1D4ED8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 4.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AndroidView(factory = { ctx ->
+                        TextClock(ctx).apply {
+                            format12Hour = "hh:mm a"
+                            textSize = clockTextSize
+                            setTextColor(AndroidColor.parseColor("#3B82F6"))
+                            typeface = Typeface.DEFAULT_BOLD
+                        }
+                    })
+                    AndroidView(factory = { ctx ->
+                        TextClock(ctx).apply {
+                            format12Hour = "EEEE, MMMM dd"
+                            textSize = dateTextSize
+                            setTextColor(AndroidColor.parseColor("#1E3A5F"))
+                        }
+                    })
+                    Spacer(modifier = Modifier.height(48.dp))
+                    Text(
+                        text = "QR ကုဒ် ပြ၍ ဆက်လက်ဆောင်ရွက်ပါ",
+                        color = Color(0xFF1E3A5F),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // ── Lunch survey overlay ─────────────────────────────────────
+        if (showLunchSurvey) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xE0000000)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(Color(0xFF1E293B), RoundedCornerShape(32.dp))
+                        .padding(horizontal = 48.dp, vertical = 44.dp)
+                ) {
+                    Text("🍱", fontSize = lunchEmojiSz)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "ယနေ့ နေ့လည်စာ စားမှာလား?",
+                        color = Color.White,
+                        fontSize = lunchQnFontSz,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(28.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(
+                            onClick = onLunchYes,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF16A34A),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.size(width = lunchBtnWidth, height = btnHeight)
+                        ) {
+                            Text("ဟုတ်ကဲ့", fontSize = lunchBtnFontSz, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = onLunchNo,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFDC2626),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.size(width = lunchBtnWidth, height = btnHeight)
+                        ) {
+                            Text("မစားပါ", fontSize = lunchBtnFontSz, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ScannerFrame(modifier: Modifier = Modifier, frameSize: Dp = 280.dp) {
+    val cornerLen = (frameSize.value * 0.13f).dp
+    val stroke    = 4.dp
+
+    Box(modifier = modifier.size(frameSize)) {
+        // Subtle tint inside frame
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x1038BDF8), RoundedCornerShape(16.dp))
+        )
+        // Top-left
+        Box(Modifier.align(Alignment.TopStart).width(cornerLen).height(stroke).background(Color.White))
+        Box(Modifier.align(Alignment.TopStart).width(stroke).height(cornerLen).background(Color.White))
+        // Top-right
+        Box(Modifier.align(Alignment.TopEnd).width(cornerLen).height(stroke).background(Color.White))
+        Box(Modifier.align(Alignment.TopEnd).width(stroke).height(cornerLen).background(Color.White))
+        // Bottom-left
+        Box(Modifier.align(Alignment.BottomStart).width(cornerLen).height(stroke).background(Color.White))
+        Box(Modifier.align(Alignment.BottomStart).width(stroke).height(cornerLen).background(Color.White))
+        // Bottom-right
+        Box(Modifier.align(Alignment.BottomEnd).width(cornerLen).height(stroke).background(Color.White))
+        Box(Modifier.align(Alignment.BottomEnd).width(stroke).height(cornerLen).background(Color.White))
     }
 }

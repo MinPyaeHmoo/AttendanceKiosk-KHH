@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Attendance records: kiosk writes without auth, admins read/manage
+    match /attendance_logs/{doc} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Lunch survey responses: kiosk writes without auth, admins read/manage
+    match /lunch_surveys/{doc} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Announcements: kiosk reads publicly, only admins can write
+    match /announcements/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Audit log: admins create and read, nobody can modify or delete
+    match /audit_logs/{doc} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+  }
+}

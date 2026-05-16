@@ -27,14 +27,21 @@ class QrCodeAnalyzer(
         .build()
     private val faceScanner = FaceDetection.getClient(faceOptions)
 
-    private var isScanningPaused = false
+    private val EMPLOYEE_ID_REGEX = Regex("^[A-Za-z0-9][A-Za-z0-9 _.@-]{1,49}$")
 
-    // NEW: Memory variable to remember if a face was seen recently
-    private var lastFaceSeenTimestamp = 0L
+    @Volatile private var isScanningPaused = false
+    @Volatile private var frameCount       = 0
+    @Volatile private var frameStride      = 1   // 1 = every frame; 8 = every 8th (standby)
 
     @OptIn(ExperimentalGetImage::class)
     override fun analyze(imageProxy: ImageProxy) {
         if (isScanningPaused) {
+            imageProxy.close()
+            return
+        }
+
+        frameCount++
+        if (frameCount % frameStride != 0) {
             imageProxy.close()
             return
         }
@@ -53,16 +60,10 @@ class QrCodeAnalyzer(
                 val faces = if (faceTask.isSuccessful) faceTask.result else null
                 val barcodes = if (barcodeTask.isSuccessful) barcodeTask.result else null
 
-                // If we see a face in this frame, update our memory timestamp!
-                if (!faces.isNullOrEmpty()) {
-                    lastFaceSeenTimestamp = System.currentTimeMillis()
-                }
-
                 val qrValue = barcodes?.firstOrNull()?.rawValue
-                if (qrValue != null) {
-
-                    // GRACE PERIOD: Was a face seen anytime in the last 2 seconds (2000 ms)?
-                    if (System.currentTimeMillis() - lastFaceSeenTimestamp < 2000) {
+                if (qrValue != null && EMPLOYEE_ID_REGEX.matches(qrValue)) {
+                    // Face must be present in the SAME frame as the QR code — no grace period
+                    if (!faces.isNullOrEmpty()) {
                         isScanningPaused = true
                         onValidScan(qrValue)
                     } else {
@@ -76,6 +77,11 @@ class QrCodeAnalyzer(
         } else {
             imageProxy.close()
         }
+    }
+
+    fun setStandbyMode(enabled: Boolean) {
+        frameStride = if (enabled) 8 else 1
+        frameCount  = 0
     }
 
     fun resumeScanning() {
