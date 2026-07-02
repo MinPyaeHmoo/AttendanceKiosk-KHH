@@ -27,7 +27,7 @@ class QrCodeAnalyzer(
         .build()
     private val faceScanner = FaceDetection.getClient(faceOptions)
 
-    private val EMPLOYEE_ID_REGEX = Regex("^[A-Za-z0-9][A-Za-z0-9 _.@-]{1,49}$")
+    private val EMPLOYEE_ID_REGEX = Regex("^[A-Za-z0-9][A-Za-z0-9 _.@,-]{1,49}$")
 
     @Volatile private var isScanningPaused = false
     @Volatile private var frameCount       = 0

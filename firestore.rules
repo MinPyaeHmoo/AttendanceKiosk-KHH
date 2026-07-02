@@ -28,5 +28,11 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if false;
     }
+
+    // Employees: kiosk reads publicly for QR lookup, only admins can write
+    match /employees/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
   }
 }

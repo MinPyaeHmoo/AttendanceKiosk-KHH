@@ -3,23 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KHH Admin Dashboard</title>
+  <title>KHH Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg:         #060c18;
+      --surface:    #0c1628;
+      --surface-2:  #111d2e;
+      --border:     #1a2d47;
+      --accent:     #2563eb;
+      --accent-h:   #1d4ed8;
+      --green:      #10b981;
+      --red:        #ef4444;
+      --yellow:     #f59e0b;
+      --blue-light: #38bdf8;
+      --text:       #f1f5f9;
+      --text-2:     #94a3b8;
+      --text-3:     #475569;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
-      padding: 32px 24px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Login screen ── */
+    /* ────────────────────────────────────────────
+       LOGIN
+    ──────────────────────────────────────────── */
     #login-screen {
-      position: fixed;
-      inset: 0;
-      background: #0f172a;
+      position: fixed; inset: 0;
+      background: var(--bg);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -27,509 +47,1203 @@
     }
 
     .login-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
       padding: 48px 40px;
-      text-align: center;
-      max-width: 400px;
       width: 100%;
+      max-width: 400px;
     }
 
-    .login-card .login-logo { font-size: 2.4rem; margin-bottom: 4px; }
-    .login-card h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 32px; }
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .brand-mark {
+      width: 42px; height: 42px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-mark svg { width: 22px; height: 22px; fill: white; }
+
+    .brand-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 3px;
+    }
+
+    .brand-sub {
+      font-size: 0.72rem;
+      color: var(--text-3);
+      font-weight: 400;
+    }
+
+    .login-card h2 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .login-card .login-desc {
+      font-size: 0.875rem;
+      color: var(--text-2);
+      margin-bottom: 32px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-2);
+      margin-bottom: 6px;
+    }
 
     .login-field {
       width: 100%;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 12px 16px;
-      color: #e2e8f0;
-      font-size: 0.95rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-family: inherit;
       outline: none;
-      margin-bottom: 12px;
-      transition: border-color 0.2s;
+      margin-bottom: 18px;
+      transition: border-color 0.15s;
     }
-    .login-field:focus { border-color: #38bdf8; }
-    .login-field::placeholder { color: #475569; }
+    .login-field:focus { border-color: var(--accent); }
+    .login-field::placeholder { color: var(--text-3); }
 
     .btn-login {
-      background: #0ea5e9;
+      width: 100%;
+      background: var(--accent);
       color: white;
       border: none;
-      border-radius: 12px;
-      padding: 14px 32px;
-      font-size: 1rem;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.925rem;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      width: 100%;
       margin-top: 4px;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
-    .btn-login:hover { background: #38bdf8; }
-    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-login:hover { background: var(--accent-h); }
+    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
 
     #login-error {
-      color: #f87171;
-      margin-top: 14px;
-      font-size: 0.85rem;
+      color: var(--red);
+      font-size: 0.83rem;
+      margin-top: 12px;
       min-height: 20px;
     }
 
-    /* ── Dashboard (hidden until auth) ── */
-    #dashboard { display: none; }
+    /* ────────────────────────────────────────────
+       DASHBOARD SHELL
+    ──────────────────────────────────────────── */
+    #dashboard { display: none; min-height: 100vh; }
 
-    /* ── Header ── */
-    header {
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ────────────────────────────────────────────
+       SIDEBAR
+    ──────────────────────────────────────────── */
+    #sidebar {
+      width: 224px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 50;
+    }
+
+    .sidebar-logo {
+      padding: 22px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-mark {
+      width: 34px; height: 34px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-mark svg { width: 17px; height: 17px; fill: white; }
+
+    .logo-text {
+      font-size: 0.975rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .logo-sub {
+      font-size: 0.68rem;
+      color: var(--text-3);
+      font-weight: 400;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow-y: auto;
+    }
+
+    .nav-group-label {
+      font-size: 0.67rem;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      padding: 12px 10px 5px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 0.86rem;
+      font-weight: 500;
+      color: var(--text-2);
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .nav-item:hover { background: var(--surface-2); color: var(--text); }
+
+    .nav-item.active {
+      background: rgba(37, 99, 235, 0.14);
+      color: #60a5fa;
+    }
+
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.8; }
+    .nav-item.active svg { opacity: 1; }
+
+    .sidebar-footer {
+      padding: 14px 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 10px;
+      margin-bottom: 8px;
+    }
+
+    .user-avatar {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    #user-email {
+      font-size: 0.77rem;
+      color: var(--text-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .btn-signout {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 12px;
+      color: var(--text-2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+
+    .btn-signout:hover {
+      background: var(--surface-2);
+      color: var(--text);
+      border-color: var(--text-3);
+    }
+
+    .btn-signout svg { width: 13px; height: 13px; }
+
+    /* ────────────────────────────────────────────
+       MAIN AREA
+    ──────────────────────────────────────────── */
+    #main {
+      margin-left: 224px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .top-bar {
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 32px;
-      flex-wrap: wrap;
-      gap: 12px;
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      gap: 16px;
     }
 
-    header h1 { font-size: 1.8rem; font-weight: 700; color: #f8fafc; }
-    header h1 span { color: #38bdf8; }
+    .top-bar-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
 
-    .header-right {
+    .top-bar-right {
       display: flex;
       align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      gap: 14px;
     }
 
     #today-label {
-      font-size: 1rem;
-      color: #94a3b8;
-      background: #1e293b;
-      padding: 8px 16px;
-      border-radius: 8px;
+      font-size: 0.8rem;
+      color: var(--text-2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 6px;
     }
 
-    #user-email { font-size: 0.85rem; color: #94a3b8; }
-
-    .btn-signout {
-      background: #334155;
-      color: #e2e8f0;
-      border: 1px solid #475569;
-      border-radius: 8px;
-      padding: 8px 16px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.77rem;
+      color: var(--text-3);
     }
-    .btn-signout:hover { background: #475569; }
 
-    /* ── Summary cards ── */
-    .summary-grid {
+    .pulse {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
+    /* ────────────────────────────────────────────
+       CONTENT & SECTIONS
+    ──────────────────────────────────────────── */
+    .content {
+      padding: 32px;
+      flex: 1;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .page-desc {
+      font-size: 0.86rem;
+      color: var(--text-2);
+    }
+
+    /* ────────────────────────────────────────────
+       STAT CARDS
+    ──────────────────────────────────────────── */
+    .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       margin-bottom: 32px;
     }
 
-    .card {
-      background: #1e293b;
-      border-radius: 16px;
-      padding: 24px;
-      text-align: center;
-      border: 1px solid #334155;
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px 24px;
     }
 
-    .card .icon { font-size: 2.5rem; margin-bottom: 8px; }
-    .card .number { font-size: 3rem; font-weight: 800; line-height: 1; }
-    .card .label {
-      font-size: 0.9rem; color: #94a3b8;
-      margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em;
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 14px;
     }
 
-    .card.yes   .number { color: #4ade80; }
-    .card.no    .number { color: #f87171; }
-    .card.total .number { color: #38bdf8; }
+    .stat-number {
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
 
-    /* ── Section titles ── */
-    .section-title {
-      font-size: 1rem; font-weight: 600; color: #94a3b8;
-      text-transform: uppercase; letter-spacing: 0.08em;
+    .stat-hint {
+      font-size: 0.78rem;
+      color: var(--text-3);
+    }
+
+    .stat-card.blue  .stat-number { color: var(--blue-light); }
+    .stat-card.green .stat-number { color: var(--green); }
+    .stat-card.red   .stat-number { color: var(--red); }
+
+    /* ────────────────────────────────────────────
+       SECTION HEADERS
+    ──────────────────────────────────────────── */
+    .sub-header {
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
       margin-bottom: 12px;
     }
 
-    /* ── Employee list ── */
-    .employee-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 10px;
-    }
-
-    .employee-row {
-      display: flex; align-items: center; justify-content: space-between;
-      background: #1e293b; border-radius: 10px;
-      padding: 12px 16px; border: 1px solid #334155;
-      transition: border-color 0.2s;
-    }
-    .employee-row:hover { border-color: #475569; }
-    .employee-id { font-weight: 600; font-size: 0.95rem; color: #e2e8f0; }
-
-    .badge {
-      font-size: 0.8rem; font-weight: 700;
-      padding: 4px 12px; border-radius: 999px;
-    }
-    .badge.yes { background: #166534; color: #4ade80; }
-    .badge.no  { background: #7f1d1d; color: #f87171; }
-
-    /* ── Announcement manager ── */
-    .announce-form {
-      display: flex; gap: 10px; margin-bottom: 16px;
-    }
-
-    .announce-form input {
-      flex: 1;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 12px 16px;
-      color: #e2e8f0;
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .announce-form input:focus { border-color: #38bdf8; }
-    .announce-form input::placeholder { color: #475569; }
-
-    .btn-post {
-      background: #0ea5e9;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 24px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    .btn-post:hover { background: #38bdf8; }
-
-    .announce-list { display: flex; flex-direction: column; gap: 8px; }
-
-    .announce-item {
-      display: flex; align-items: center; justify-content: space-between;
-      background: #1e293b; border-radius: 10px;
-      padding: 12px 16px; border: 1px solid #334155;
-      gap: 12px; flex-wrap: wrap;
-    }
-
-    .announce-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .announce-dot.active   { background: #4ade80; }
-    .announce-dot.inactive { background: #475569; }
-
-    .announce-msg {
-      flex: 1; font-size: 0.95rem; color: #e2e8f0;
-    }
-    .announce-msg.inactive { color: #475569; text-decoration: line-through; }
-
-    .announce-actions { display: flex; gap: 8px; }
-
-    .btn-toggle, .btn-delete {
-      border: none; border-radius: 8px;
-      padding: 6px 14px; font-size: 0.8rem; font-weight: 600;
-      cursor: pointer; transition: opacity 0.2s;
-    }
-    .btn-toggle  { background: #1d4ed8; color: #93c5fd; }
-    .btn-toggle:hover { opacity: 0.8; }
-    .btn-delete  { background: #7f1d1d; color: #f87171; }
-    .btn-delete:hover { opacity: 0.8; }
-
-    .announce-empty {
-      color: #475569; font-size: 0.9rem;
-      padding: 16px; text-align: center;
-    }
-
-    /* ── Divider ── */
     .divider {
-      border: none; border-top: 1px solid #1e293b;
+      border: none;
+      border-top: 1px solid var(--border);
       margin: 32px 0;
     }
 
-    /* ── Status bar ── */
-    #status-bar {
-      margin-top: 32px; text-align: center;
-      font-size: 0.8rem; color: #475569;
+    /* ────────────────────────────────────────────
+       EMPTY STATES
+    ──────────────────────────────────────────── */
+    #empty-state, #attendance-empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-3);
+      font-size: 0.875rem;
     }
 
-    .pulse {
-      display: inline-block; width: 8px; height: 8px;
-      background: #4ade80; border-radius: 50%;
-      margin-right: 6px; animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
+    #empty-state    { display: none; }
+    #attendance-empty { display: none; }
+
+    /* ────────────────────────────────────────────
+       EMPLOYEE GRID
+    ──────────────────────────────────────────── */
+    .employee-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 8px;
     }
 
-    #empty-state {
-      text-align: center; padding: 40px;
-      color: #475569; font-size: 1rem; display: none;
+    .employee-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      transition: border-color 0.12s;
     }
 
-    /* ── Attendance log ── */
+    .employee-row:hover { border-color: var(--text-3); }
+
+    .employee-id {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 5px;
+    }
+
+    .badge.yes {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.22);
+    }
+
+    .badge.no {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--red);
+      border: 1px solid rgba(239, 68, 68, 0.22);
+    }
+
+    /* ────────────────────────────────────────────
+       ATTENDANCE GRID
+    ──────────────────────────────────────────── */
     .attendance-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 10px;
+      gap: 8px;
     }
 
     .att-row {
-      display: flex; align-items: center;
-      background: #1e293b; border-radius: 10px;
-      padding: 12px 16px; border: 1px solid #334155;
-      gap: 10px;
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      gap: 12px;
     }
 
-    .att-emp { font-weight: 700; font-size: 0.95rem; color: #e2e8f0; flex: 1; }
+    .att-emp {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--text);
+      flex: 1;
+    }
 
     .att-time {
-      font-size: 0.8rem; font-weight: 700;
-      padding: 4px 10px; border-radius: 8px; white-space: nowrap;
-    }
-    .att-time.in  { background: #14532d; color: #4ade80; }
-    .att-time.out { background: #450a0a; color: #f87171; }
-    .att-time.nil { color: #475569; font-weight: 400; }
-
-    #attendance-empty {
-      text-align: center; padding: 40px;
-      color: #475569; font-size: 1rem; display: none;
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 5px;
+      white-space: nowrap;
     }
 
-    /* ── Monthly Report ── */
+    .att-time.in {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--green);
+      border: 1px solid rgba(16, 185, 129, 0.22);
+    }
+
+    .att-time.out {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--red);
+      border: 1px solid rgba(239, 68, 68, 0.22);
+    }
+
+    .att-time.nil { color: var(--text-3); font-weight: 400; }
+
+    /* ────────────────────────────────────────────
+       MONTHLY REPORT
+    ──────────────────────────────────────────── */
     .month-controls {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
     }
 
     #month-picker {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 10px;
-      padding: 10px 14px;
-      color: #e2e8f0;
-      font-size: 0.95rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: 0.875rem;
+      font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.15s;
       color-scheme: dark;
     }
-    #month-picker:focus { border-color: #38bdf8; }
+
+    #month-picker:focus { border-color: var(--accent); }
 
     .btn-export {
-      background: #16a34a;
+      background: #15803d;
       color: white;
       border: none;
-      border-radius: 10px;
-      padding: 10px 20px;
-      font-size: 0.95rem;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 0.875rem;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: opacity 0.15s;
       white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    .btn-export:hover { background: #15803d; }
-    .btn-export:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    #monthly-record-count { font-size: 0.88rem; color: #94a3b8; }
+    .btn-export:hover { opacity: 0.85; }
+    .btn-export:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-export svg { width: 14px; height: 14px; }
+
+    #monthly-record-count {
+      font-size: 0.82rem;
+      color: var(--text-2);
+    }
 
     #monthly-status {
       text-align: center;
-      padding: 36px;
-      color: #475569;
-      font-size: 0.95rem;
+      padding: 48px;
+      color: var(--text-3);
+      font-size: 0.875rem;
     }
 
     .monthly-table-wrapper {
       overflow-x: auto;
-      border-radius: 12px;
-      border: 1px solid #334155;
-      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
     }
 
     #monthly-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
+      font-size: 0.865rem;
     }
 
-    #monthly-table thead { background: #1e293b; }
+    #monthly-table thead { background: var(--surface); }
 
     #monthly-table th {
       padding: 12px 16px;
       text-align: left;
       font-weight: 600;
-      color: #94a3b8;
+      color: var(--text-2);
+      font-size: 0.72rem;
       text-transform: uppercase;
-      font-size: 0.78rem;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid #334155;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
       white-space: nowrap;
     }
 
     #monthly-table td {
-      padding: 10px 16px;
-      border-bottom: 1px solid #1a2740;
-      color: #e2e8f0;
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(26, 45, 71, 0.7);
+      color: var(--text);
     }
 
-    #monthly-table tbody tr { background: #0f172a; }
-    #monthly-table tbody tr:nth-child(even) { background: #111827; }
-    #monthly-table tbody tr:hover { background: #1d2d44; }
+    #monthly-table tbody tr { background: var(--bg); }
+    #monthly-table tbody tr:nth-child(even) { background: rgba(12, 22, 40, 0.5); }
+    #monthly-table tbody tr:hover { background: var(--surface-2); }
     #monthly-table tbody tr:last-child td { border-bottom: none; }
 
-    .m-in    { color: #4ade80; font-weight: 600; }
-    .m-out   { color: #f87171; font-weight: 600; }
-    .m-nil   { color: #475569; }
-    .m-hours { color: #38bdf8; font-weight: 600; }
+    .m-in    { color: var(--green); font-weight: 600; }
+    .m-out   { color: var(--red); font-weight: 600; }
+    .m-nil   { color: var(--text-3); }
+    .m-hours { color: var(--blue-light); font-weight: 600; }
 
-    /* ── Mobile ── */
-    @media (max-width: 640px) {
-      body { padding: 16px 12px; }
+    /* ────────────────────────────────────────────
+       ANNOUNCEMENTS
+    ──────────────────────────────────────────── */
+    .announce-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
 
-      /* Header stacks vertically */
-      header { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 20px; }
-      header h1 { font-size: 1.3rem; }
-      .header-right { width: 100%; justify-content: space-between; }
-      #user-email { display: none; }
-      #today-label { font-size: 0.8rem; padding: 6px 12px; }
+    .announce-form input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 0.875rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
 
-      /* 3-column lunch cards, shrunk */
-      .summary-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
-      .card { padding: 14px 6px; border-radius: 12px; }
-      .card .icon { font-size: 1.6rem; margin-bottom: 4px; }
-      .card .number { font-size: 2rem; }
-      .card .label { font-size: 0.65rem; letter-spacing: 0; }
+    .announce-form input[type="text"]:focus { border-color: var(--accent); }
+    .announce-form input[type="text"]::placeholder { color: var(--text-3); }
 
-      /* Single-column lists */
+    .ack-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.8rem;
+      color: var(--text-2);
+      white-space: nowrap;
+      cursor: pointer;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 14px;
+      transition: border-color 0.12s;
+    }
+
+    .ack-label:hover { border-color: var(--text-3); }
+    .ack-label input[type="checkbox"] {
+      accent-color: var(--yellow);
+      width: 14px; height: 14px;
+      cursor: pointer;
+    }
+
+    .btn-post {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-post:hover { background: var(--accent-h); }
+
+    .announce-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .announce-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 13px 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .announce-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .announce-dot.active   { background: var(--green); }
+    .announce-dot.inactive { background: var(--text-3); }
+
+    .announce-msg {
+      flex: 1;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .announce-msg.inactive {
+      color: var(--text-3);
+      text-decoration: line-through;
+    }
+
+    .announce-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge-ack {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--yellow);
+      border: 1px solid rgba(245, 158, 11, 0.22);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-toggle, .btn-delete {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 13px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.12s;
+    }
+
+    .btn-toggle {
+      background: rgba(37, 99, 235, 0.14);
+      color: #60a5fa;
+      border: 1px solid rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-toggle:hover { opacity: 0.7; }
+
+    .btn-delete {
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--red);
+      border: 1px solid rgba(239, 68, 68, 0.22);
+    }
+
+    .btn-delete:hover { opacity: 0.7; }
+
+    .announce-empty {
+      color: var(--text-3);
+      font-size: 0.875rem;
+      padding: 36px;
+      text-align: center;
+    }
+
+    /* ── ACK type select (shown when checkbox is checked) ── */
+    .ack-type-select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: 0.8rem;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .ack-type-select:focus { border-color: var(--accent); }
+
+    /* ── Two-panel acknowledgements grid ── */
+    .ack-panels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .ack-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .ack-panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .ack-msg-label {
+      font-size: 0.82rem;
+      color: var(--yellow);
+      padding: 8px 12px;
+      background: rgba(245, 158, 11, 0.07);
+      border: 1px solid rgba(245, 158, 11, 0.18);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+
+    .ack-msg-label.empty {
+      color: var(--text-3);
+      background: none;
+      border-color: var(--border);
+    }
+
+    .ack-item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .ack-panel-empty {
+      color: var(--text-3);
+      font-size: 0.82rem;
+      padding: 14px 0;
+      text-align: center;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .ack-panels-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Hidden status bar (kept for JS compatibility) */
+    #status-bar { display: none; }
+
+    /* ────────────────────────────────────────────
+       MOBILE
+    ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar { display: none; }
+
+      #main { margin-left: 0; padding-bottom: 60px; }
+
+      .top-bar { padding: 14px 16px; }
+
+      #today-label { font-size: 0.75rem; padding: 4px 10px; }
+
+      .content { padding: 20px 16px; }
+
+      .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 24px;
+      }
+
+      .stat-card { padding: 16px 12px; }
+      .stat-number { font-size: 2rem; }
+      .stat-label { font-size: 0.68rem; margin-bottom: 10px; }
+      .stat-hint { display: none; }
+
       .employee-list { grid-template-columns: 1fr; }
       .attendance-grid { grid-template-columns: 1fr; }
 
-      /* Announcement form stacks */
       .announce-form { flex-direction: column; }
       .btn-post { width: 100%; }
+      .ack-label { width: 100%; justify-content: center; }
 
-      /* Bigger touch targets on action buttons */
-      .btn-toggle, .btn-delete { padding: 10px 16px; font-size: 0.85rem; min-height: 44px; }
+      .btn-toggle, .btn-delete { padding: 9px 14px; min-height: 40px; }
 
-      .divider { margin: 20px 0; }
-      .section-title { font-size: 0.85rem; }
-      .login-card { padding: 32px 20px; border-radius: 16px; }
-
-      /* Monthly report on mobile */
       .month-controls { flex-direction: column; align-items: stretch; }
       #month-picker { width: 100%; }
-      .btn-export { width: 100%; }
+      .btn-export { width: 100%; justify-content: center; }
+
+      #mobile-nav { display: flex; }
     }
+
+    @media (min-width: 769px) {
+      #mobile-nav { display: none; }
+    }
+
+    #mobile-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      z-index: 50;
+    }
+
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 4px 8px;
+      gap: 4px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      font-size: 0.6rem;
+      font-weight: 500;
+      color: var(--text-3);
+      transition: color 0.12s;
+    }
+
+    .mobile-nav-item.active { color: #60a5fa; }
+    .mobile-nav-item svg { width: 19px; height: 19px; }
   </style>
 </head>
 <body>
 
-  <!-- Login screen (visible until authenticated) -->
+  <!-- ── Login ── -->
   <div id="login-screen">
     <div class="login-card">
-      <div class="login-logo">🏢</div>
-      <h2>KHH Admin Dashboard</h2>
-      <input class="login-field" type="email"    id="login-email"    placeholder="Email" autocomplete="username" />
-      <input class="login-field" type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+      <div class="login-brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24"><path d="M3 21V5l9-3 9 3v16H3zm2-2h4v-4H5v4zm0-6h4v-4H5v4zm6 6h4v-4h-4v4zm0-6h4v-4h-4v4zm6 6h4v-4h-4v4zm0-6h4v-4h-4v4z"/></svg>
+        </div>
+        <div>
+          <div class="brand-name">KHH</div>
+          <div class="brand-sub">Admin Portal</div>
+        </div>
+      </div>
+      <h2>Welcome back</h2>
+      <div class="login-desc">Sign in to access the admin dashboard.</div>
+      <label class="field-label" for="login-email">Email address</label>
+      <input class="login-field" type="email" id="login-email" placeholder="you@example.com" autocomplete="username" />
+      <label class="field-label" for="login-password">Password</label>
+      <input class="login-field" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" />
       <button class="btn-login" id="btn-signin">Sign In</button>
       <div id="login-error"></div>
     </div>
   </div>
 
-  <!-- Dashboard (hidden until authenticated) -->
+  <!-- ── Dashboard ── -->
   <div id="dashboard">
-    <header>
-      <h1>🏢 KHH <span>Admin Dashboard</span></h1>
-      <div class="header-right">
-        <div id="today-label">Loading...</div>
-        <span id="user-email"></span>
-        <button class="btn-signout" id="btn-signout">Sign Out</button>
-      </div>
-    </header>
+    <div class="layout">
 
-    <!-- Lunch summary -->
-    <div class="section-title">🍱 Today's Lunch</div>
-    <div class="summary-grid" style="margin-top:12px;">
-      <div class="card total">
-        <div class="icon">👥</div>
-        <div class="number" id="count-total">–</div>
-        <div class="label">Responded</div>
-      </div>
-      <div class="card yes">
-        <div class="icon">✅</div>
-        <div class="number" id="count-yes">–</div>
-        <div class="label">Having Lunch</div>
-      </div>
-      <div class="card no">
-        <div class="icon">❌</div>
-        <div class="number" id="count-no">–</div>
-        <div class="label">Skipping Lunch</div>
-      </div>
-    </div>
+      <!-- Sidebar -->
+      <aside id="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-mark">
+            <svg viewBox="0 0 24 24"><path d="M3 21V5l9-3 9 3v16H3zm2-2h4v-4H5v4zm0-6h4v-4H5v4zm6 6h4v-4h-4v4zm0-6h4v-4h-4v4zm6 6h4v-4h-4v4zm0-6h4v-4h-4v4z"/></svg>
+          </div>
+          <div>
+            <div class="logo-text">KHH</div>
+            <div class="logo-sub">Admin Dashboard</div>
+          </div>
+        </div>
 
-    <div class="section-title">Employee Responses</div>
-    <div id="empty-state">No responses yet for today.</div>
-    <div class="employee-list" id="employee-list"></div>
+        <nav class="sidebar-nav">
+          <div class="nav-group-label">Main</div>
 
-    <hr class="divider" />
+          <button class="nav-item active" data-section="overview" onclick="showSection('overview')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            Overview
+          </button>
 
-    <!-- Today's attendance log -->
-    <div class="section-title">🕐 Today's Attendance</div>
-    <div id="attendance-empty">No attendance records yet for today.</div>
-    <div class="attendance-grid" id="attendance-list"></div>
+          <button class="nav-item" data-section="attendance" onclick="showSection('attendance')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Attendance
+          </button>
 
-    <hr class="divider" />
+          <button class="nav-item" data-section="monthly" onclick="showSection('monthly')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Monthly Report
+          </button>
 
-    <!-- Monthly Attendance Report -->
-    <div class="section-title">📊 Monthly Attendance Report</div>
-    <div class="month-controls">
-      <input type="month" id="month-picker" />
-      <button class="btn-export" id="btn-export-excel" disabled>⬇ Export Excel</button>
-      <span id="monthly-record-count"></span>
-    </div>
-    <div id="monthly-status">Select a month above to load records.</div>
-    <div class="monthly-table-wrapper" id="monthly-table-wrapper" style="display:none;">
-      <table id="monthly-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Employee ID</th>
-            <th>Clock In</th>
-            <th>Clock Out</th>
-            <th>Hours Worked</th>
-          </tr>
-        </thead>
-        <tbody id="monthly-body"></tbody>
-      </table>
-    </div>
+          <div class="nav-group-label">Communication</div>
 
-    <hr class="divider" />
+          <button class="nav-item" data-section="announcements" onclick="showSection('announcements')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            Announcements
+          </button>
+        </nav>
 
-    <!-- Announcement manager -->
-    <div class="section-title">📢 Announcements</div>
-    <div class="announce-form">
-      <input type="text" id="announce-input" placeholder="Type announcement for the kiosk screen..." maxlength="200" />
-      <button class="btn-post" id="btn-post">Post</button>
-    </div>
-    <div class="announce-list" id="announce-list">
-      <div class="announce-empty">Loading announcements...</div>
-    </div>
+        <div class="sidebar-footer">
+          <div class="user-row">
+            <div class="user-avatar" id="user-avatar-initials">A</div>
+            <div id="user-email"></div>
+          </div>
+          <button class="btn-signout" id="btn-signout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sign Out
+          </button>
+        </div>
+      </aside>
 
-    <div id="status-bar"><span class="pulse"></span>Live – updates automatically</div>
+      <!-- Main content -->
+      <div id="main">
+
+        <!-- Top bar -->
+        <div class="top-bar">
+          <div class="top-bar-title" id="section-title">Overview</div>
+          <div class="top-bar-right">
+            <div id="today-label">Loading…</div>
+            <div class="live-badge">
+              <span class="pulse"></span>
+              Live
+            </div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+
+          <!-- ── Overview ── -->
+          <div class="section active" id="section-overview">
+            <div class="page-header">
+              <div class="page-title">Today's Overview</div>
+              <div class="page-desc">Lunch survey responses collected from the kiosk today.</div>
+            </div>
+
+            <div class="stats-grid">
+              <div class="stat-card blue">
+                <div class="stat-label">Responded</div>
+                <div class="stat-number" id="count-total">–</div>
+                <div class="stat-hint">total responses</div>
+              </div>
+              <div class="stat-card green">
+                <div class="stat-label">Having Lunch</div>
+                <div class="stat-number" id="count-yes">–</div>
+                <div class="stat-hint">confirmed</div>
+              </div>
+              <div class="stat-card red">
+                <div class="stat-label">Skipping Lunch</div>
+                <div class="stat-number" id="count-no">–</div>
+                <div class="stat-hint">not joining</div>
+              </div>
+            </div>
+
+            <div class="sub-header">Employee Responses</div>
+            <div id="empty-state">No responses yet for today.</div>
+            <div class="employee-list" id="employee-list"></div>
+          </div>
+
+          <!-- ── Attendance ── -->
+          <div class="section" id="section-attendance">
+            <div class="page-header">
+              <div class="page-title">Today's Attendance</div>
+              <div class="page-desc">Real-time clock in / clock out records for today.</div>
+            </div>
+
+            <div id="attendance-empty">No attendance records yet for today.</div>
+            <div class="attendance-grid" id="attendance-list"></div>
+          </div>
+
+          <!-- ── Monthly Report ── -->
+          <div class="section" id="section-monthly">
+            <div class="page-header">
+              <div class="page-title">Monthly Report</div>
+              <div class="page-desc">View and export attendance records by month.</div>
+            </div>
+
+            <div class="month-controls">
+              <input type="month" id="month-picker" />
+              <button class="btn-export" id="btn-export-excel" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export Excel
+              </button>
+              <span id="monthly-record-count"></span>
+            </div>
+
+            <div id="monthly-status">Select a month above to load records.</div>
+
+            <div class="monthly-table-wrapper" id="monthly-table-wrapper" style="display:none;">
+              <table id="monthly-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Employee ID</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Hours Worked</th>
+                  </tr>
+                </thead>
+                <tbody id="monthly-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Announcements ── -->
+          <div class="section" id="section-announcements">
+            <div class="page-header">
+              <div class="page-title">Announcements</div>
+              <div class="page-desc">Broadcast messages to the kiosk screen.</div>
+            </div>
+
+            <div class="announce-form">
+              <input type="text" id="announce-input" placeholder="Type an announcement for the kiosk screen…" maxlength="200" />
+              <label class="ack-label" for="announce-requires-ack">
+                <input type="checkbox" id="announce-requires-ack" onchange="toggleAckType()" />
+                Requires Acknowledgement
+              </label>
+              <select id="announce-ack-type" class="ack-type-select" style="display:none;">
+                <option value="CLOCK_IN">Clock-In</option>
+                <option value="CLOCK_OUT">Clock-Out</option>
+              </select>
+              <button class="btn-post" id="btn-post">Post</button>
+            </div>
+
+            <div class="sub-header" style="margin-bottom:12px;">All Announcements</div>
+            <div class="announce-list" id="announce-list">
+              <div class="announce-empty">Loading announcements…</div>
+            </div>
+
+            <hr class="divider" />
+
+            <div class="sub-header" style="margin-bottom:14px;">Acknowledgements</div>
+            <div class="ack-panels-grid">
+              <div class="ack-panel">
+                <div class="ack-panel-title"><span class="badge yes">IN</span> Clock-In Acknowledgement</div>
+                <div id="ack-clockin-label" class="ack-msg-label empty">No active clock-in announcement.</div>
+                <div id="ack-clockin-list" class="ack-item-list"></div>
+                <div id="ack-clockin-empty" class="ack-panel-empty">No acknowledgements yet.</div>
+              </div>
+              <div class="ack-panel">
+                <div class="ack-panel-title"><span class="badge no">OUT</span> Clock-Out Acknowledgement</div>
+                <div id="ack-clockout-label" class="ack-msg-label empty">No active clock-out announcement.</div>
+                <div id="ack-clockout-list" class="ack-item-list"></div>
+                <div id="ack-clockout-empty" class="ack-panel-empty">No acknowledgements yet.</div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- .content -->
+      </div><!-- #main -->
+    </div><!-- .layout -->
+
+    <!-- Mobile bottom nav -->
+    <nav id="mobile-nav">
+      <button class="mobile-nav-item active" data-section="overview" onclick="showSection('overview')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Overview
+      </button>
+      <button class="mobile-nav-item" data-section="attendance" onclick="showSection('attendance')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Attendance
+      </button>
+      <button class="mobile-nav-item" data-section="monthly" onclick="showSection('monthly')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Reports
+      </button>
+      <button class="mobile-nav-item" data-section="announcements" onclick="showSection('announcements')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Announce
+      </button>
+    </nav>
+
+    <!-- Hidden; kept for JS compatibility -->
+    <div id="status-bar"></div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -538,6 +1252,28 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
   <script>
+    // ── Section navigation ─────────────────────────────────────────────
+    const sectionTitles = {
+      overview:      'Overview',
+      attendance:    'Today\'s Attendance',
+      monthly:       'Monthly Report',
+      announcements: 'Announcements'
+    };
+
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      const el = document.getElementById('section-' + id);
+      if (el) el.classList.add('active');
+
+      document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.section === id);
+      });
+
+      const titleEl = document.getElementById('section-title');
+      if (titleEl) titleEl.textContent = sectionTitles[id] || id;
+    }
+
+    // ── Firebase ───────────────────────────────────────────────────────
     const firebaseConfig = {
       apiKey:            "AIzaSyATUd529u_sfBP1-DxSSMvOZE_uRZ40Ucc",
       authDomain:        "khh-attendance.firebaseapp.com",
@@ -554,16 +1290,23 @@
     let unsubscribeLunch         = null;
     let unsubscribeAnnouncements = null;
     let unsubscribeAttendance    = null;
+    let unsubscribeAckClockIn    = null;
+    let unsubscribeAckClockOut   = null;
+    let activeClockInAckId       = null;
+    let activeClockOutAckId      = null;
 
-    // ── Auth state ────────────────────────────────────────────────────
+    // ── Auth state ─────────────────────────────────────────────────────
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('dashboard').style.display    = 'block';
         document.getElementById('user-email').textContent     = user.email;
-        document.getElementById('login-error').textContent    = '';
+        document.getElementById('user-avatar-initials').textContent =
+          (user.email || 'A').charAt(0).toUpperCase();
+        document.getElementById('login-error').textContent = '';
         initDashboard();
         logAdminAction('login');
+        pruneAuditLogs();
       } else {
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('dashboard').style.display    = 'none';
@@ -584,17 +1327,23 @@
       const errorEl  = document.getElementById('login-error');
 
       errorEl.textContent = '';
-      if (!email || !password) { errorEl.textContent = 'Please enter your email and password.'; return; }
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter your email and password.';
+        return;
+      }
 
-      btn.disabled = true;
-      btn.textContent = 'Signing in...';
+      btn.disabled    = true;
+      btn.textContent = 'Signing in…';
 
       auth.signInWithEmailAndPassword(email, password)
         .catch(e => {
-          errorEl.textContent = 'Sign-in failed: ' + (e.code === 'auth/invalid-credential' ? 'Incorrect email or password.' : e.message);
+          errorEl.textContent = 'Sign-in failed: ' +
+            (e.code === 'auth/invalid-credential'
+              ? 'Incorrect email or password.'
+              : e.message);
         })
         .finally(() => {
-          btn.disabled = false;
+          btn.disabled    = false;
           btn.textContent = 'Sign In';
         });
     }
@@ -604,7 +1353,7 @@
       auth.signOut();
     });
 
-    // ── Audit logger ──────────────────────────────────────────────────
+    // ── Audit logger ───────────────────────────────────────────────────
     function logAdminAction(action, details) {
       const user  = auth.currentUser;
       const entry = Object.assign({
@@ -617,7 +1366,24 @@
         .catch(e => console.warn('Audit log failed:', e));
     }
 
-    // ── Dashboard init ────────────────────────────────────────────────
+    // ── Audit log pruner (keep 60 days) ───────────────────────────────
+    function pruneAuditLogs() {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 60);
+      const cutoffTs = firebase.firestore.Timestamp.fromDate(cutoff);
+      db.collection('audit_logs')
+        .where('timestamp', '<', cutoffTs)
+        .get()
+        .then(snap => {
+          if (snap.empty) return;
+          const batch = db.batch();
+          snap.forEach(doc => batch.delete(doc.ref));
+          return batch.commit();
+        })
+        .catch(e => console.warn('Audit log pruning failed:', e));
+    }
+
+    // ── Dashboard init ─────────────────────────────────────────────────
     function initDashboard() {
       const today = new Date().toLocaleDateString('en-CA');
       document.getElementById('today-label').textContent =
@@ -625,7 +1391,6 @@
           weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
 
-      // Auto-reload at midnight so the dashboard resets for the new day
       const now      = new Date();
       const midnight = new Date();
       midnight.setHours(24, 0, 0, 0);
@@ -636,12 +1401,14 @@
     }
 
     function stopListeners() {
-      if (unsubscribeLunch)         { unsubscribeLunch();         unsubscribeLunch         = null; }
-      if (unsubscribeAnnouncements) { unsubscribeAnnouncements(); unsubscribeAnnouncements = null; }
-      if (unsubscribeAttendance)    { unsubscribeAttendance();    unsubscribeAttendance    = null; }
+      if (unsubscribeLunch)            { unsubscribeLunch();            unsubscribeLunch            = null; }
+      if (unsubscribeAnnouncements)    { unsubscribeAnnouncements();    unsubscribeAnnouncements    = null; }
+      if (unsubscribeAttendance)       { unsubscribeAttendance();       unsubscribeAttendance       = null; }
+      if (unsubscribeAckClockIn)  { unsubscribeAckClockIn();  unsubscribeAckClockIn  = null; }
+      if (unsubscribeAckClockOut) { unsubscribeAckClockOut(); unsubscribeAckClockOut = null; }
     }
 
-    // ── Firestore listeners ───────────────────────────────────────────
+    // ── Firestore listeners ────────────────────────────────────────────
     function startListeners(today) {
       unsubscribeLunch = db.collection('lunch_surveys')
         .where('date', '==', today)
@@ -671,22 +1438,22 @@
             div.className = 'employee-row';
 
             const idSpan = document.createElement('span');
-            idSpan.className = 'employee-id';
-            idSpan.textContent = row.employeeId;   // textContent — safe against XSS
+            idSpan.className   = 'employee-id';
+            idSpan.textContent = row.employeeId;
 
             const badge = document.createElement('span');
-            badge.className = 'badge ' + (row.hasLunch ? 'yes' : 'no');
-            badge.textContent = row.hasLunch ? 'LUNCH ✅' : 'NO LUNCH ❌';
+            badge.className   = 'badge ' + (row.hasLunch ? 'yes' : 'no');
+            badge.textContent = row.hasLunch ? 'Lunch' : 'No Lunch';
 
             div.appendChild(idSpan);
             div.appendChild(badge);
             list.appendChild(div);
           });
         }, () => {
-          document.getElementById('status-bar').textContent = '⚠ Connection error – check Firestore rules';
+          document.getElementById('status-bar').textContent =
+            'Connection error – check Firestore rules';
         });
 
-      // Attendance log for today
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
       const endOfDay   = new Date(); endOfDay.setHours(23, 59, 59, 999);
 
@@ -719,16 +1486,16 @@
             row.className = 'att-row';
 
             const idEl = document.createElement('span');
-            idEl.className = 'att-emp';
+            idEl.className   = 'att-emp';
             idEl.textContent = empId;
 
             const inEl = document.createElement('span');
-            inEl.className = times.clockIn ? 'att-time in' : 'att-time nil';
-            inEl.textContent = times.clockIn ? '▶ ' + times.clockIn : '▶ –';
+            inEl.className   = times.clockIn ? 'att-time in' : 'att-time nil';
+            inEl.textContent = times.clockIn ? 'In  ' + times.clockIn : 'In  –';
 
             const outEl = document.createElement('span');
-            outEl.className = times.clockOut ? 'att-time out' : 'att-time nil';
-            outEl.textContent = times.clockOut ? '◀ ' + times.clockOut : '◀ –';
+            outEl.className   = times.clockOut ? 'att-time out' : 'att-time nil';
+            outEl.textContent = times.clockOut ? 'Out  ' + times.clockOut : 'Out  –';
 
             row.appendChild(idEl);
             row.appendChild(inEl);
@@ -745,15 +1512,30 @@
 
           if (snapshot.empty) {
             const empty = document.createElement('div');
-            empty.className = 'announce-empty';
+            empty.className   = 'announce-empty';
             empty.textContent = 'No announcements yet.';
             list.appendChild(empty);
             return;
           }
 
+          let newClockInId = null,  newClockInMsg  = '';
+          let newClockOutId = null, newClockOutMsg = '';
+
           snapshot.docs.forEach(doc => {
-            const data   = doc.data();
-            const active = data.isActive === true;
+            const data        = doc.data();
+            const active      = data.isActive === true;
+            const requiresAck = data.requiresAck === true;
+            const ackType     = data.ackType || 'CLOCK_IN';
+
+            if (active && requiresAck) {
+              if (ackType === 'CLOCK_OUT' && !newClockOutId) {
+                newClockOutId  = doc.id;
+                newClockOutMsg = data.message || '';
+              } else if (ackType !== 'CLOCK_OUT' && !newClockInId) {
+                newClockInId  = doc.id;
+                newClockInMsg = data.message || '';
+              }
+            }
 
             const div = document.createElement('div');
             div.className = 'announce-item';
@@ -762,19 +1544,26 @@
             dot.className = 'announce-dot ' + (active ? 'active' : 'inactive');
 
             const msg = document.createElement('span');
-            msg.className = 'announce-msg' + (active ? '' : ' inactive');
-            msg.textContent = data.message;         // textContent — safe against XSS
+            msg.className   = 'announce-msg' + (active ? '' : ' inactive');
+            msg.textContent = data.message;
 
             const actions = document.createElement('div');
             actions.className = 'announce-actions';
 
+            if (requiresAck) {
+              const ackBadge = document.createElement('span');
+              ackBadge.className   = 'badge-ack';
+              ackBadge.textContent = ackType === 'CLOCK_OUT' ? 'ACK-OUT' : 'ACK-IN';
+              actions.appendChild(ackBadge);
+            }
+
             const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'btn-toggle';
+            toggleBtn.className   = 'btn-toggle';
             toggleBtn.textContent = active ? 'Deactivate' : 'Activate';
             toggleBtn.addEventListener('click', () => toggleAnnouncement(doc.id, active));
 
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn-delete';
+            deleteBtn.className   = 'btn-delete';
             deleteBtn.textContent = 'Delete';
             deleteBtn.addEventListener('click', () => deleteAnnouncement(doc.id));
 
@@ -785,27 +1574,112 @@
             div.appendChild(actions);
             list.appendChild(div);
           });
+
+          if (newClockInId !== activeClockInAckId) {
+            activeClockInAckId = newClockInId;
+            if (unsubscribeAckClockIn) { unsubscribeAckClockIn(); unsubscribeAckClockIn = null; }
+            updateAckPanel('clockin', newClockInId, newClockInMsg);
+          }
+          if (newClockOutId !== activeClockOutAckId) {
+            activeClockOutAckId = newClockOutId;
+            if (unsubscribeAckClockOut) { unsubscribeAckClockOut(); unsubscribeAckClockOut = null; }
+            updateAckPanel('clockout', newClockOutId, newClockOutMsg);
+          }
         });
     }
 
-    // ── Announcement actions ──────────────────────────────────────────
+    // ── Acknowledgements panels ────────────────────────────────────────
+    function updateAckPanel(type, announcementId, msg) {
+      const labelEl = document.getElementById('ack-' + type + '-label');
+      const listEl  = document.getElementById('ack-' + type + '-list');
+      const emptyEl = document.getElementById('ack-' + type + '-empty');
+
+      if (!announcementId) {
+        labelEl.className   = 'ack-msg-label empty';
+        labelEl.textContent = type === 'clockin'
+          ? 'No active clock-in announcement.'
+          : 'No active clock-out announcement.';
+        listEl.innerHTML      = '';
+        emptyEl.style.display = 'none';
+        return;
+      }
+
+      labelEl.className     = 'ack-msg-label';
+      labelEl.textContent   = msg;
+      listEl.innerHTML      = '';
+      emptyEl.style.display = 'none';
+
+      const unsub = db.collection('acknowledgements')
+        .where('announcementId', '==', announcementId)
+        .orderBy('timestamp', 'asc')
+        .onSnapshot(snapshot => {
+          listEl.innerHTML = '';
+
+          if (snapshot.empty) {
+            emptyEl.style.display = 'block';
+            return;
+          }
+          emptyEl.style.display = 'none';
+
+          const fmt = { hour: '2-digit', minute: '2-digit', hour12: true };
+          snapshot.docs.forEach(doc => {
+            const d  = doc.data();
+            const ts = d.timestamp?.toDate ? d.timestamp.toDate() : new Date();
+
+            const row = document.createElement('div');
+            row.className = 'employee-row';
+
+            const idEl = document.createElement('span');
+            idEl.className   = 'employee-id';
+            idEl.textContent = d.employeeId || '–';
+
+            const timeEl = document.createElement('span');
+            timeEl.style.cssText = 'font-size:0.76rem;color:var(--text-2);white-space:nowrap;';
+            timeEl.textContent   = ts.toLocaleTimeString('en-MY', fmt);
+
+            row.appendChild(idEl);
+            row.appendChild(timeEl);
+            listEl.appendChild(row);
+          });
+        });
+
+      if (type === 'clockin') unsubscribeAckClockIn  = unsub;
+      else                    unsubscribeAckClockOut = unsub;
+    }
+
+    // ── Announcement actions ───────────────────────────────────────────
     document.getElementById('btn-post').addEventListener('click', postAnnouncement);
     document.getElementById('announce-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') postAnnouncement();
     });
 
+    function toggleAckType() {
+      const checked  = document.getElementById('announce-requires-ack').checked;
+      document.getElementById('announce-ack-type').style.display = checked ? '' : 'none';
+    }
+
     function postAnnouncement() {
-      const input = document.getElementById('announce-input');
-      const msg   = input.value.trim();
+      const input       = document.getElementById('announce-input');
+      const ackCheckbox = document.getElementById('announce-requires-ack');
+      const ackTypeEl   = document.getElementById('announce-ack-type');
+      const msg         = input.value.trim();
+      const requiresAck = ackCheckbox.checked;
+      const ackType     = requiresAck ? (ackTypeEl.value || 'CLOCK_IN') : null;
       if (!msg || msg.length > 200) return;
 
-      db.collection('announcements').add({
-        message:   msg,
-        isActive:  true,
-        createdAt: firebase.firestore.Timestamp.now()
-      }).then(() => {
-        input.value = '';
-        logAdminAction('post_announcement', { message: msg });
+      const docData = {
+        message:     msg,
+        isActive:    true,
+        requiresAck: requiresAck,
+        createdAt:   firebase.firestore.Timestamp.now()
+      };
+      if (ackType) docData.ackType = ackType;
+
+      db.collection('announcements').add(docData).then(() => {
+        input.value             = '';
+        ackCheckbox.checked     = false;
+        ackTypeEl.style.display = 'none';
+        logAdminAction('post_announcement', { message: msg, requiresAck, ackType });
       }).catch(e => alert('Failed to post: ' + e.message));
     }
 
@@ -822,10 +1696,9 @@
       }
     }
 
-    // ── Monthly Report ────────────────────────────────────────────────
+    // ── Monthly Report ─────────────────────────────────────────────────
     let monthlyRows = [];
 
-    // Pre-fill picker to current month
     (function () {
       const now = new Date();
       const y   = now.getFullYear();
@@ -867,12 +1740,11 @@
             return;
           }
 
-          // Group by employee+day so each employee has one row per day
           const dayMap = {};
           snapshot.docs.forEach(doc => {
-            const d      = doc.data();
-            const ts     = d.timestamp?.toDate ? d.timestamp.toDate() : new Date(d.timestamp);
-            const dateKey = ts.toLocaleDateString('en-CA');          // YYYY-MM-DD
+            const d       = doc.data();
+            const ts      = d.timestamp?.toDate ? d.timestamp.toDate() : new Date(d.timestamp);
+            const dateKey = ts.toLocaleDateString('en-CA');
             const key     = dateKey + '|' + (d.employeeId || '');
             if (!dayMap[key]) dayMap[key] = { date: dateKey, empId: d.employeeId || '–', clockIn: null, clockOut: null };
             if (d.recordType === 'CLOCK_IN'  && !dayMap[key].clockIn)  dayMap[key].clockIn  = ts;
@@ -891,7 +1763,7 @@
           countEl.textContent     = `${monthlyRows.length} record${monthlyRows.length !== 1 ? 's' : ''}`;
         })
         .catch(err => {
-          statusEl.textContent = '⚠ Failed to load: ' + err.message;
+          statusEl.textContent = 'Failed to load: ' + err.message;
         });
     }
 
@@ -918,6 +1790,7 @@
           el.textContent = text;
           return el;
         };
+
         tr.appendChild(td(row.date));
         tr.appendChild(td(row.empId));
         tr.appendChild(td(inStr  || '–', inStr  ? 'm-in'  : 'm-nil'));
@@ -932,7 +1805,6 @@
 
       const val       = document.getElementById('month-picker').value;
       const [y, m]    = val.split('-').map(Number);
-      const monthName = new Date(y, m - 1, 1).toLocaleString('en-MY', { month: 'long', year: 'numeric' });
       const fmt       = { hour: '2-digit', minute: '2-digit', hour12: true };
 
       const wsData = [['Date', 'Employee ID', 'Clock In', 'Clock Out', 'Hours Worked']];
@@ -953,7 +1825,6 @@
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       ws['!cols'] = [{ wch: 13 }, { wch: 18 }, { wch: 13 }, { wch: 13 }, { wch: 14 }];
 
-      // Bold header row
       const headerRange = XLSX.utils.decode_range(ws['!ref']);
       for (let c = headerRange.s.c; c <= headerRange.e.c; c++) {
         const cellAddr = XLSX.utils.encode_cell({ r: 0, c });
